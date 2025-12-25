@@ -37,7 +37,7 @@ async function readFromBlob(): Promise<GameRecord[]> {
   const exact = blobs.find((b) => b.pathname === BLOB_PATH);
   const newest = blobs
     .filter((b) => b.pathname.startsWith(BLOB_PATH))
-    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0];
+    .sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime())[0];
   const existing = exact ?? newest;
   if (!existing) return [];
 
