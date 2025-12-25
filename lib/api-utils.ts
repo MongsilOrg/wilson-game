@@ -14,6 +14,7 @@ const DATA_FILE = path.join(process.cwd(), 'data', 'records.json');
 const DATA_DIR = path.dirname(DATA_FILE);
 
 const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const isVercel = process.env.VERCEL === '1';
 
 async function ensureDataFile() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
@@ -92,6 +93,11 @@ export async function getRecords(): Promise<GameRecord[]> {
       return await readFromBlob();
     }
 
+    // Vercel 환경에서 토큰이 없으면 영구 저장 불가 → 명시적으로 실패시켜 원인 노출
+    if (isVercel && !hasBlobToken) {
+      throw new Error('Missing BLOB_READ_WRITE_TOKEN in Vercel environment');
+    }
+
     // 로컬 폴백
     await ensureDataFile();
     const data = await fsp.readFile(DATA_FILE, 'utf8');
@@ -111,6 +117,11 @@ export async function saveRecords(records: GameRecord[]): Promise<void> {
     if (hasBlobToken) {
       await writeToBlob(records);
       return;
+    }
+
+    // Vercel 환경에서 토큰이 없으면 영구 저장 불가 → 명시적으로 실패시켜 원인 노출
+    if (isVercel && !hasBlobToken) {
+      throw new Error('Missing BLOB_READ_WRITE_TOKEN in Vercel environment');
     }
 
     // 로컬 폴백

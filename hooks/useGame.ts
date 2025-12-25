@@ -75,7 +75,7 @@ export function useGame() {
     // 선택된 사과들의 합 계산 (값이 있는 칸만 대상)
     let sum = 0;
     const coordsToRemove: [number, number][] = [];
-
+    
     for (const [row, col] of selectedPath) {
       const value = gridRef.current.getValue(row, col);
       if (value !== null && value !== 0) {
