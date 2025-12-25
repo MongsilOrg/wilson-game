@@ -34,7 +34,11 @@ function toRecordArray(maybeRecords: unknown): GameRecord[] {
 
 async function readFromBlob(): Promise<GameRecord[]> {
   const { blobs } = await list({ prefix: BLOB_PATH });
-  const existing = blobs.find((b) => b.pathname === BLOB_PATH) ?? blobs[0];
+  const exact = blobs.find((b) => b.pathname === BLOB_PATH);
+  const newest = blobs
+    .filter((b) => b.pathname.startsWith(BLOB_PATH))
+    .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())[0];
+  const existing = exact ?? newest;
   if (!existing) return [];
 
   const res = await fetch(existing.url, { cache: 'no-store' });
