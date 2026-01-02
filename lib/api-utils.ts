@@ -2,6 +2,7 @@ import { GameRecord } from '@/types/game';
 import { list, put } from '@vercel/blob';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '@/lib/logger';
 
 const fsp = fs.promises;
 
@@ -107,9 +108,9 @@ export async function getRecords(): Promise<GameRecord[]> {
     await ensureDataFile();
     const data = await fsp.readFile(DATA_FILE, 'utf8');
     const parsed = JSON.parse(data);
-    return toRecordArray(parsed);
+      return toRecordArray(parsed);
   } catch (error) {
-    console.error('Error getting records:', error);
+    logger.error('Error getting records:', error);
     return [];
   }
 }
@@ -133,7 +134,7 @@ export async function saveRecords(records: GameRecord[]): Promise<void> {
     await ensureDataFile();
     await fsp.writeFile(DATA_FILE, JSON.stringify(records, null, 2), 'utf8');
   } catch (error) {
-    console.error('Error saving records:', error);
+    logger.error('Error saving records:', error);
     throw error;
   }
 }

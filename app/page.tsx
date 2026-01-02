@@ -1,6 +1,9 @@
 import { dedupeAndSort, getRecords } from '@/lib/api-utils';
 import { ClientGameWrapper } from '@/components/ClientGameWrapper';
 
+// 랭킹 데이터는 실시간으로 업데이트되므로 동적 렌더링 사용
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   // 서버에서 랭킹 데이터 가져오기 (SSR)
   const records = await getRecords();

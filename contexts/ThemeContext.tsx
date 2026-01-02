@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 type Theme = 'light' | 'dark';
 
@@ -104,7 +105,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.setItem(THEME_STORAGE_KEY, newTheme);
       } catch (error) {
-        console.error('Failed to save theme:', error);
+        logger.error('Failed to save theme:', error);
       }
       return newTheme;
     });

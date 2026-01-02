@@ -4,6 +4,8 @@ export interface GameRecord {
   nickname: string;
   score: number;
   date: string;
+  avatarUrl?: string;
+  discordId?: string;
 }
 
 export interface SelectedArea {

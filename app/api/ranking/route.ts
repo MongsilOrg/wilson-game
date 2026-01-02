@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dedupeAndSort, getRecords } from '@/lib/api-utils';
+import { logger } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -8,6 +9,7 @@ export async function GET() {
     // 닉네임 중복 제거 및 정렬 후 상위 10개만 반환
     return NextResponse.json(dedupeAndSort(records, 10));
   } catch (error) {
+    logger.error('랭킹 조회 오류:', error);
     return NextResponse.json(
       { error: '랭킹을 불러오는데 실패했습니다.' },
       { status: 500 }

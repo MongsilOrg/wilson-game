@@ -6,6 +6,8 @@ import { FruitRenderer } from '@/lib/fruit-renderer';
 import { InputHandler } from '@/lib/input-handler';
 import { GameState, GameRecord, RemovingAnimation, GRID_WIDTH, GRID_HEIGHT } from '@/types/game';
 import { includesCoord } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api-client';
 
 export function useGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,18 +118,18 @@ export function useGame() {
   const initializeBoard = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      console.warn('[initializeBoard] Canvas ref is null');
+      logger.warn('[initializeBoard] Canvas ref is null');
       return false;
     }
 
     if (!canvas.isConnected) {
-      console.warn('[initializeBoard] Canvas is not connected to DOM');
+      logger.warn('[initializeBoard] Canvas is not connected to DOM');
       return false;
     }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.error('[initializeBoard] Failed to get 2d context');
+      logger.error('[initializeBoard] Failed to get 2d context');
       return false;
     }
 
@@ -142,7 +144,7 @@ export function useGame() {
       const newCellSize = canvas.width / GRID_WIDTH;
       
       if (newCellSize <= 0) {
-        console.error('[initializeBoard] Invalid cell size:', newCellSize);
+        logger.error('[initializeBoard] Invalid cell size:', newCellSize);
         return false;
       }
 
@@ -159,10 +161,10 @@ export function useGame() {
       // 새 입력 핸들러 상태 초기화
       inputHandlerRef.current.reset();
 
-      console.log('[initializeBoard] Successfully initialized');
+      logger.debug('[initializeBoard] Successfully initialized');
       return true;
     } catch (error) {
-      console.error('[initializeBoard] Error during initialization:', error);
+      logger.error('[initializeBoard] Error during initialization:', error);
       return false;
     }
   }, [setupCanvas, handleSelection]);
@@ -171,7 +173,7 @@ export function useGame() {
    * 게임 시작
    */
   const startGame = useCallback((nickname: string) => {
-    console.log('[startGame] Called with nickname:', nickname);
+    logger.debug('[startGame] Called with nickname:', nickname);
     
     // 기존 타이머 정리
     if (timerIntervalRef.current) {
@@ -188,7 +190,7 @@ export function useGame() {
     // 캔버스가 준비될 때까지 재시도
     const tryInitialize = (attempts = 0) => {
       if (attempts > 20) {
-        console.error('[startGame] Failed to initialize after 20 attempts');
+        logger.error('[startGame] Failed to initialize after 20 attempts');
         alert('게임을 시작할 수 없습니다. 페이지를 새로고침해주세요.');
         setGameState('waiting');
         return;
@@ -196,14 +198,14 @@ export function useGame() {
 
       const ready = initializeBoard();
       if (!ready) {
-        console.log(`[startGame] Attempt ${attempts + 1} failed, retrying...`);
+        logger.debug(`[startGame] Attempt ${attempts + 1} failed, retrying...`);
         requestAnimationFrame(() => {
           setTimeout(() => tryInitialize(attempts + 1), 50);
         });
         return;
       }
 
-      console.log('[startGame] Board initialized successfully');
+      logger.debug('[startGame] Board initialized successfully');
       // 초기화 성공 후 게임 상태를 playing으로 설정
       setGameState('playing');
       
@@ -236,18 +238,13 @@ export function useGame() {
     // 기록 저장
     if (playerNickname && score > 0) {
       try {
-        await fetch('/api/record', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nickname: playerNickname,
-            score: score
-          })
+        await apiClient.post('/api/record', {
+          nickname: playerNickname,
+          score: score
         });
       } catch (error) {
-        // 에러 무시
+        logger.error('기록 저장 실패:', error);
+        // 사용자에게는 조용히 실패 (게임 플레이 경험에 영향 없음)
       }
     }
   }, [playerNickname, score]);

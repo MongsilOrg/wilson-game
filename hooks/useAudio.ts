@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { logger } from '@/lib/logger';
 
 const VOLUME_STORAGE_KEY = 'wilson-game-volume';
 
@@ -26,7 +27,7 @@ function getStoredVolume(): number {
       }
     }
   } catch (error) {
-    console.error('Failed to load volume from localStorage:', error);
+    logger.error('Failed to load volume from localStorage:', error);
   }
   
   return 0.1;
@@ -71,7 +72,7 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
         audio.play().then(() => {
           setIsPlaying(true);
         }).catch((error) => {
-          console.error('Auto play failed:', error);
+          logger.error('Auto play failed:', error);
         });
       }
 
@@ -95,7 +96,7 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
       audioRef.current.play().then(() => {
         setIsPlaying(true);
       }).catch((error) => {
-        console.error('Audio play failed:', error);
+        logger.error('Audio play failed:', error);
       });
     }
   }, []);
@@ -124,7 +125,7 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
     try {
       localStorage.setItem(VOLUME_STORAGE_KEY, newVolume.toString());
     } catch (error) {
-      console.error('Failed to save volume to localStorage:', error);
+      logger.error('Failed to save volume to localStorage:', error);
     }
   }, []);
 

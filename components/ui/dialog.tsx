@@ -12,12 +12,14 @@ const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-dialog-backdrop"
         onClick={() => onOpenChange?.(false)}
       />
-      <div className="relative z-50">{children}</div>
+      <div className="relative z-50 w-full max-w-lg animate-dialog-content">
+        {children}
+      </div>
     </div>
   )
 }
@@ -29,8 +31,9 @@ const DialogContent = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "fixed left-1/2 top-1/2 z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-2xl border border-border/70 bg-card/95 text-card-foreground shadow-soft-card duration-200",
+      "relative z-50 grid w-full gap-4 rounded-2xl border border-border/70 bg-card/95 text-card-foreground shadow-xl",
       "backdrop-blur-xl",
+      "mx-auto",
       className
     )}
     {...props}

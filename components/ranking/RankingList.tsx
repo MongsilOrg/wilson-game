@@ -3,6 +3,8 @@
 import { memo, useEffect, useState, useMemo, useCallback } from 'react';
 import { GameRecord } from '@/types/game';
 import { escapeHtml } from '@/lib/utils';
+import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api-client';
 import {
   Table,
   TableBody,
@@ -29,16 +31,17 @@ export const RankingList = memo(function RankingList({
     try {
       setLoading(true);
       setError(false);
-      const response = await fetch('/api/ranking');
+      const response = await apiClient.get('/api/ranking');
       if (response.ok) {
         const data = await response.json();
         setRecords(data);
       } else {
+        logger.warn('랭킹 조회 실패:', response.status, response.statusText);
         setError(true);
         setRecords(initialRecords);
       }
     } catch (error) {
-      console.error('Failed to fetch ranking:', error);
+      logger.error('Failed to fetch ranking:', error);
       setError(true);
       setRecords(initialRecords);
     } finally {
@@ -137,7 +140,7 @@ export const RankingList = memo(function RankingList({
             <TableHeader>
               <TableRow className="border-b border-border/60 hover:bg-transparent">
                 <TableHead className="w-14 text-center text-xs font-semibold text-muted-foreground">순위</TableHead>
-                <TableHead className="text-xs font-semibold text-muted-foreground">닉네임</TableHead>
+                <TableHead className="text-xs font-semibold text-muted-foreground">플레이어</TableHead>
                 <TableHead className="text-right text-xs font-semibold text-muted-foreground">점수</TableHead>
                 <TableHead className="text-right hidden sm:table-cell text-xs font-semibold text-muted-foreground">시간</TableHead>
               </TableRow>
@@ -161,8 +164,26 @@ export const RankingList = memo(function RankingList({
                     <TableCell className={`font-semibold text-center ${config.color} text-sm`}>
                       {rank}
                     </TableCell>
-                    <TableCell className="font-medium truncate max-w-[140px] sm:max-w-none text-foreground">
-                      {escapeHtml(record.nickname)}
+                    <TableCell className="font-medium max-w-[140px] sm:max-w-none text-foreground">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {record.avatarUrl ? (
+                          <img
+                            src={record.avatarUrl}
+                            alt={escapeHtml(record.nickname)}
+                            className="w-8 h-8 rounded-full flex-shrink-0"
+                            onError={(e) => {
+                              // 이미지 로드 실패 시 기본 아바타로 대체
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
+                            {escapeHtml(record.nickname).charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="truncate">{escapeHtml(record.nickname)}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold text-foreground tabular-nums">
                       {record.score.toLocaleString()}

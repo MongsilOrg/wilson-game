@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "@/styles/globals.css";
 import { GameProvider } from "@/contexts/GameContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SessionProvider } from "@/components/SessionProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -61,17 +62,19 @@ export default function RootLayout({
       <body
         className={`${inter.className} min-h-screen text-foreground antialiased`}
       >
-        <ThemeProvider>
-          <GameProvider>
-            <div className="relative min-h-screen">
-              <div className="pointer-events-none absolute inset-0 opacity-60 blur-3xl">
-                <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10" />
-                <div className="absolute right-0 top-24 h-64 w-64 rounded-full bg-info/10" />
+        <SessionProvider>
+          <ThemeProvider>
+            <GameProvider>
+              <div className="relative min-h-screen">
+                <div className="pointer-events-none absolute inset-0 opacity-60 blur-3xl">
+                  <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-primary/10" />
+                  <div className="absolute right-0 top-24 h-64 w-64 rounded-full bg-info/10" />
+                </div>
+                <div className="relative">{children}</div>
               </div>
-              <div className="relative">{children}</div>
-            </div>
-          </GameProvider>
-        </ThemeProvider>
+            </GameProvider>
+          </ThemeProvider>
+        </SessionProvider>
         <Analytics />
       </body>
     </html>

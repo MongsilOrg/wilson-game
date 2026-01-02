@@ -4,9 +4,8 @@ export class FruitRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private cellSize: number;
-  private wilsonImage: HTMLImageElement;
-  private imageWidth: number;
-  private imageHeight: number;
+  private wilsonImages: Map<number, HTMLImageElement>;
+  private imageSizes: Map<number, { width: number; height: number }>;
   private gridWidth: number;
   private gridHeight: number;
 
@@ -16,24 +15,28 @@ export class FruitRenderer {
     this.cellSize = cellSize;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
-    this.wilsonImage = new Image();
-    this.imageWidth = 0;
-    this.imageHeight = 0;
+    this.wilsonImages = new Map();
+    this.imageSizes = new Map();
 
-    // 이미지 로드 완료 시 크기 저장
-    this.wilsonImage.onload = () => {
-      this.imageWidth = this.wilsonImage.naturalWidth;
-      this.imageHeight = this.wilsonImage.naturalHeight;
-    };
-
-    this.wilsonImage.src = '/wilson.png';
+    // 1부터 9까지의 윌슨 이미지 미리 로드
+    for (let i = 1; i <= 9; i++) {
+      const img = new Image();
+      img.onload = () => {
+        this.imageSizes.set(i, {
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+        });
+      };
+      img.src = `/wilson/number_${i}.png`;
+      this.wilsonImages.set(i, img);
+    }
   }
 
   /**
    * 윌슨 이미지 그리기
    */
   drawFruit(col: number, row: number, value: number, isSelected: boolean = false, alpha: number = 1.0): void {
-    if (value === 0 || value === null) return;
+    if (value === 0 || value === null || value < 1 || value > 9) return;
 
     const cellX = col * this.cellSize;
     const cellY = row * this.cellSize;
@@ -63,9 +66,13 @@ export class FruitRenderer {
       this.ctx.stroke();
     }
 
-    // 윌슨 이미지 그리기 (항상 1:1 정사각형 비율 유지)
-    const iw = this.imageWidth || this.wilsonImage.naturalWidth || this.wilsonImage.width;
-    const ih = this.imageHeight || this.wilsonImage.naturalHeight || this.wilsonImage.height;
+    // 해당 숫자의 윌슨 이미지 가져오기
+    const wilsonImage = this.wilsonImages.get(value);
+    if (!wilsonImage) return;
+
+    const sizeInfo = this.imageSizes.get(value);
+    const iw = sizeInfo?.width || wilsonImage.naturalWidth || wilsonImage.width || 0;
+    const ih = sizeInfo?.height || wilsonImage.naturalHeight || wilsonImage.height || 0;
 
     if (iw > 0 && ih > 0) {
       // 원본 이미지에서 중앙 정사각형 영역만 사용 (더 짧은 변 기준)
@@ -84,7 +91,7 @@ export class FruitRenderer {
       // drawImage: (image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
       // 소스와 대상 모두 정사각형으로 설정하여 1:1 비율 보장
       this.ctx.drawImage(
-        this.wilsonImage,
+        wilsonImage,
         sx,           // 소스 x (정사각형 영역의 시작)
         sy,           // 소스 y (정사각형 영역의 시작)
         srcSize,      // 소스 너비 (정사각형)
@@ -95,13 +102,6 @@ export class FruitRenderer {
         renderSize    // 대상 높이 (정사각형)
       );
     }
-
-    // 숫자 텍스트 (이미지 위에 표시)
-    this.ctx.fillStyle = '#000000';
-    this.ctx.font = `bold ${this.cellSize * 0.3}px Arial`;
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(value.toString(), x, y);
 
     this.ctx.restore();
   }
