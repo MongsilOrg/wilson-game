@@ -33,10 +33,17 @@ export const authOptions = {
     }),
   ],
   events: {
-    async signIn({ user, account, profile }) {
+    async signIn(message: { user: any; account?: any; profile?: any }) {
       // 로그인 성공 시 에러 저장소에서 해당 사용자 정보 제거
+      const { user, account, profile } = message;
+      
       if (user && (user as any).discordId) {
         authErrorStore.delete((user as any).discordId);
+      }
+      // account나 profile이 있는 경우 discordId 추출
+      if (account && profile && (profile as DiscordProfile).id) {
+        const discordId = (profile as DiscordProfile).id;
+        authErrorStore.delete(discordId);
       }
     },
   },
