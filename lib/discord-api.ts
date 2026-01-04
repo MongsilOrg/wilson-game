@@ -136,3 +136,29 @@ export function getMemberAvatarUrl(member: DiscordGuildMember | null, user: Disc
   return getDiscordAvatarUrl(user.id, user.avatar, user.discriminator);
 }
 
+/**
+ * 학적 인증 확인 (특정 역할 ID 보유 여부 확인)
+ * 역할 ID 1406632649686253649, 1406620470307979344, 또는 1129731819198222417 중 하나를 가지고 있으면 인증된 것으로 간주
+ */
+export async function checkAcademicVerification(userId: string): Promise<boolean> {
+  if (!BOT_TOKEN) {
+    return false;
+  }
+
+  try {
+    const member = await getGuildMember(userId);
+    if (!member || !member.roles || !Array.isArray(member.roles)) {
+      return false;
+    }
+
+    // 학적 인증 역할 ID
+    const verifiedRoleIds = ['1406632649686253649', '1406620470307979344', '1129731819198222417'];
+    
+    // 멤버가 가진 역할 중 하나라도 학적 인증 역할이면 true
+    return member.roles.some(roleId => verifiedRoleIds.includes(roleId));
+  } catch (error) {
+    logger.error('학적 인증 확인 오류:', error);
+    return false;
+  }
+}
+

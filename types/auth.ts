@@ -26,6 +26,7 @@ export interface DiscordGuildMember {
   user?: DiscordUser;
   nick?: string | null;
   avatar?: string | null;
+  roles?: string[];
 }
 
 export interface SessionUser {
@@ -34,12 +35,14 @@ export interface SessionUser {
   image: string | null;
   discordId: string;
   isMember: boolean;
+  isVerified: boolean;
 }
 
 declare module 'next-auth' {
   interface User {
     discordId?: string;
     isMember?: boolean;
+    isVerified?: boolean;
   }
 
   interface Session {

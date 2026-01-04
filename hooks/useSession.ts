@@ -11,6 +11,7 @@ export function useSession() {
     isAuthenticated: !!session?.user,
     isLoading: status === 'loading',
     isMember: session?.user ? (session.user as SessionUser).isMember : false,
+    isVerified: session?.user ? (session.user as SessionUser).isVerified : false,
     update,
   };
 }

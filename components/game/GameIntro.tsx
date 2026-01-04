@@ -9,8 +9,6 @@ import { Trophy, RotateCcw, LogOut } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { AudioControl } from '@/components/game/AudioControl';
 import { useSession } from '@/hooks/useSession';
-import { DiscordLoginButton } from '@/components/auth/DiscordLoginButton';
-import { ServerJoinPrompt } from '@/components/auth/ServerJoinPrompt';
 import { signOut } from 'next-auth/react';
 import { GameRecord } from '@/types/game';
 import { apiClient } from '@/lib/api-client';
@@ -22,7 +20,7 @@ interface GameIntroProps {
 
 export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameIntroProps) {
   const { gameState, startGame, restartGame } = useGameContext();
-  const { user, isAuthenticated, isLoading, isMember } = useSession();
+  const { user, isAuthenticated, isLoading, isVerified } = useSession();
   const [bestRecord, setBestRecord] = useState<GameRecord | null>(null);
   const [bestRecordError, setBestRecordError] = useState(false);
   const [confirmRestart, setConfirmRestart] = useState(false);
@@ -98,7 +96,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-foreground">
-            {isAuthenticated ? (user?.name || '사용자') : '로그인'}
+            게임 시작
           </h3>
         </div>
         <div className="flex items-center gap-2">
@@ -111,37 +109,35 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
         <div className="flex items-center justify-center py-8">
           <div className="text-sm text-muted-foreground">로딩 중...</div>
         </div>
-      ) : !isAuthenticated ? (
-        <div className="space-y-3">
-          <DiscordLoginButton />
-          <p className="text-xs text-muted-foreground text-center">
-            디스코드로 로그인하여 게임을 시작하세요
+      ) : !isAuthenticated || !isVerified ? (
+        <div className="flex items-center justify-center py-8">
+          <p className="text-sm text-muted-foreground text-center">
+            게임을 시작하려면 로그인 및 학적 인증이 필요합니다
           </p>
         </div>
-      ) : !isMember ? (
-        <ServerJoinPrompt />
       ) : (
         <div className="space-y-3">
           {user && (
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card">
+            <div className="flex items-center gap-3 p-3 rounded-lg border border-border/60 bg-card/50">
               {user.image && (
                 <img
                   src={user.image}
                   alt={user.name || '프로필'}
-                  className="w-10 h-10 rounded-full"
+                  className="w-10 h-10 rounded-full border-2 border-border/40"
                 />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {user.name}
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {user.name || '사용자'}
                 </p>
-                <p className="text-xs text-muted-foreground">디스코드 서버 멤버</p>
+                <p className="text-xs text-muted-foreground">학적 인증 완료</p>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                title="로그아웃"
               >
                 <LogOut className="h-4 w-4" />
               </Button>
