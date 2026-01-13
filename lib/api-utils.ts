@@ -17,6 +17,9 @@ const DATA_DIR = path.dirname(DATA_FILE);
 const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const isVercel = process.env.VERCEL === '1';
 
+// Blob URL 캐시 (메모리 캐싱으로 list() 호출 최소화)
+let cachedBlobUrl: string | null = null;
+
 async function ensureDataFile() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   try {
@@ -34,22 +37,49 @@ function toRecordArray(maybeRecords: unknown): GameRecord[] {
 }
 
 async function readFromBlob(): Promise<GameRecord[]> {
-  const { blobs } = await list({ prefix: BLOB_PATH });
-  const exact = blobs.find((b) => b.pathname === BLOB_PATH);
-  const newest = blobs
-    .filter((b) => b.pathname.startsWith(BLOB_PATH))
-    .sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime())[0];
-  const existing = exact ?? newest;
-  if (!existing) return [];
+  // 캐시된 URL이 있으면 우선 사용 (list() 호출 방지)
+  if (cachedBlobUrl) {
+    try {
+      const res = await fetch(cachedBlobUrl, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        return toRecordArray(data);
+      }
+      // 캐시된 URL이 실패하면 캐시 무효화하고 fallback으로 진행
+      logger.warn('Cached blob URL failed, falling back to list()');
+      cachedBlobUrl = null;
+    } catch (error) {
+      // 네트워크 오류 등으로 실패 시 캐시 무효화하고 fallback으로 진행
+      logger.warn('Error fetching from cached blob URL, falling back to list():', error);
+      cachedBlobUrl = null;
+    }
+  }
 
-  const res = await fetch(existing.url, { cache: 'no-store' });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return toRecordArray(data);
+  // 캐시된 URL이 없거나 실패한 경우에만 list() 호출 (fallback)
+  try {
+    const { blobs } = await list({ prefix: BLOB_PATH });
+    const exact = blobs.find((b) => b.pathname === BLOB_PATH);
+    const newest = blobs
+      .filter((b) => b.pathname.startsWith(BLOB_PATH))
+      .sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime())[0];
+    const existing = exact ?? newest;
+    if (!existing) return [];
+
+    // 찾은 blob URL을 캐시에 저장
+    cachedBlobUrl = existing.url;
+
+    const res = await fetch(existing.url, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return toRecordArray(data);
+  } catch (error) {
+    logger.error('Error in readFromBlob fallback:', error);
+    return [];
+  }
 }
 
 async function writeToBlob(records: GameRecord[]): Promise<void> {
-  await put(
+  const result = await put(
     BLOB_PATH,
     JSON.stringify(records, null, 2),
     {
@@ -59,6 +89,9 @@ async function writeToBlob(records: GameRecord[]): Promise<void> {
       cacheControlMaxAge: 0,
     }
   );
+  
+  // put()이 반환하는 URL을 캐시에 저장 (다음 readFromBlob() 호출 시 list() 호출 방지)
+  cachedBlobUrl = result.url;
 }
 
 /**
