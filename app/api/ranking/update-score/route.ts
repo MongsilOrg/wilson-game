@@ -33,20 +33,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const { discordId, score } = await request.json();
+    const { discordId, score, nickname } = await request.json();
     
-    if (!discordId || score === undefined) {
+    if (!discordId) {
       return NextResponse.json(
         { error: '필수 데이터가 누락되었습니다.' },
-        { status: 400 }
-      );
-    }
-
-    const parsedScore = Number.parseInt(score.toString(), 10);
-    
-    if (Number.isNaN(parsedScore) || parsedScore < 0) {
-      return NextResponse.json(
-        { error: '유효하지 않은 점수입니다.' },
         { status: 400 }
       );
     }
@@ -64,19 +55,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // 점수 업데이트
+    // 업데이트할 데이터 구성
+    const updatedRecord = { ...records[recordIndex] };
+    
+    // 점수 업데이트 (제공된 경우)
+    if (score !== undefined) {
+      const parsedScore = Number.parseInt(score.toString(), 10);
+      
+      if (Number.isNaN(parsedScore) || parsedScore < 0) {
+        return NextResponse.json(
+          { error: '유효하지 않은 점수입니다.' },
+          { status: 400 }
+        );
+      }
+      
+      updatedRecord.score = parsedScore;
+    }
+    
+    // 닉네임 업데이트 (제공된 경우)
+    if (nickname !== undefined && nickname.trim() !== '') {
+      updatedRecord.nickname = nickname.trim();
+    }
+
+    // 기록 업데이트
     const updatedRecords = [...records];
-    updatedRecords[recordIndex] = {
-      ...updatedRecords[recordIndex],
-      score: parsedScore,
-    };
+    updatedRecords[recordIndex] = updatedRecord;
     
     // 모든 기록 저장
     await saveRecords(updatedRecords);
     
     return NextResponse.json({ 
       success: true, 
-      message: '점수가 업데이트되었습니다.' 
+      message: '기록이 업데이트되었습니다.' 
     });
   } catch (error) {
     logger.error('점수 업데이트 오류:', error);
