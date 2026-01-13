@@ -62,24 +62,30 @@ async function writeToBlob(records: GameRecord[]): Promise<void> {
 }
 
 /**
- * 닉네임별 최고 점수만 남기고 점수 DESC, 동일 점수는 날짜 ASC 정렬
+ * discordId별 최고 점수만 남기고 점수 DESC, 동일 점수는 날짜 ASC 정렬
+ * discordId가 없으면 닉네임으로 중복 제거 (하위 호환성)
  */
 export function dedupeAndSort(records: GameRecord[], limit?: number): GameRecord[] {
-  const nicknameMap = new Map<string, GameRecord>();
+  // discordId를 우선으로 사용, 없으면 닉네임 사용
+  const recordMap = new Map<string, GameRecord>();
+  
   for (const record of records) {
-    const existing = nicknameMap.get(record.nickname);
+    // discordId가 있으면 discordId를 키로 사용, 없으면 닉네임 사용
+    const key = record.discordId || record.nickname;
+    const existing = recordMap.get(key);
+    
     if (!existing || record.score > existing.score) {
-      nicknameMap.set(record.nickname, record);
+      recordMap.set(key, record);
     } else if (existing && record.score === existing.score) {
       // 점수가 같을 때 더 이른 기록을 유지
       const shouldReplace = record.date.localeCompare(existing.date) < 0;
       if (shouldReplace) {
-        nicknameMap.set(record.nickname, record);
+        recordMap.set(key, record);
       }
     }
   }
 
-  const uniqueRecords = Array.from(nicknameMap.values());
+  const uniqueRecords = Array.from(recordMap.values());
   uniqueRecords.sort((a, b) => {
     if (b.score !== a.score) {
       return b.score - a.score;

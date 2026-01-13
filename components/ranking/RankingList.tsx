@@ -5,6 +5,17 @@ import { GameRecord } from '@/types/game';
 import { escapeHtml } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api-client';
+import { useSession } from '@/hooks/useSession';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { RefreshCw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -13,6 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+const ADMIN_DISCORD_ID = '602522819594551306';
 
 interface RankingListProps {
   refreshTrigger?: number;
@@ -26,6 +39,14 @@ export const RankingList = memo(function RankingList({
   const [records, setRecords] = useState<GameRecord[]>(initialRecords);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<GameRecord | null>(null);
+  const [editScore, setEditScore] = useState<string>('');
+  const [updating, setUpdating] = useState(false);
+  const { user } = useSession();
+  
+  // 관리자 확인
+  const isAdmin = user?.discordId === ADMIN_DISCORD_ID;
 
   const fetchRanking = useCallback(async () => {
     try {
@@ -48,6 +69,80 @@ export const RankingList = memo(function RankingList({
       setLoading(false);
     }
   }, [initialRecords]);
+
+  // 관리자 전용 랭킹 새로고침 (닉네임/아바타 업데이트)
+  const handleAdminRefresh = useCallback(async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setRefreshing(true);
+      const response = await apiClient.post('/api/ranking/refresh');
+      
+      if (response.ok) {
+        const data = await response.json();
+        logger.info('랭킹 새로고침 완료:', data.message);
+        // 랭킹 다시 가져오기
+        await fetchRanking();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        logger.error('랭킹 새로고침 실패:', errorData.error);
+        alert(`랭킹 새로고침 실패: ${errorData.error}`);
+      }
+    } catch (error) {
+      logger.error('랭킹 새로고침 오류:', error);
+      alert('랭킹 새로고침 중 오류가 발생했습니다.');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [isAdmin, fetchRanking]);
+
+  // 점수 클릭 핸들러 (관리자만)
+  const handleScoreClick = useCallback((record: GameRecord) => {
+    if (!isAdmin || !record.discordId) return;
+    setEditingRecord(record);
+    setEditScore(record.score.toString());
+  }, [isAdmin]);
+
+  // 점수 변경 다이얼로그 닫기
+  const handleCloseEditDialog = useCallback(() => {
+    setEditingRecord(null);
+    setEditScore('');
+  }, []);
+
+  // 점수 업데이트
+  const handleUpdateScore = useCallback(async () => {
+    if (!editingRecord || !editingRecord.discordId) return;
+    
+    const newScore = Number.parseInt(editScore, 10);
+    if (Number.isNaN(newScore) || newScore < 0) {
+      alert('유효하지 않은 점수입니다.');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      const response = await apiClient.post('/api/ranking/update-score', {
+        discordId: editingRecord.discordId,
+        score: newScore,
+      });
+
+      if (response.ok) {
+        logger.info('점수 업데이트 완료');
+        handleCloseEditDialog();
+        // 랭킹 다시 가져오기
+        await fetchRanking();
+      } else {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        logger.error('점수 업데이트 실패:', errorData.error);
+        alert(`점수 업데이트 실패: ${errorData.error}`);
+      }
+    } catch (error) {
+      logger.error('점수 업데이트 오류:', error);
+      alert('점수 업데이트 중 오류가 발생했습니다.');
+    } finally {
+      setUpdating(false);
+    }
+  }, [editingRecord, editScore, handleCloseEditDialog, fetchRanking]);
 
   useEffect(() => {
     // refreshTrigger가 변경되거나 초기 데이터가 없을 때만 fetch
@@ -130,9 +225,25 @@ export const RankingList = memo(function RankingList({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground">랭킹</h3>
-        <span className="text-xs font-medium text-muted-foreground bg-secondary/70 px-3 py-1 rounded-full">
-          상위 {Math.min(records.length, 10)}명
-        </span>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button
+              onClick={handleAdminRefresh}
+              disabled={refreshing || loading}
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title={refreshing ? '새로고침 중...' : '새로고침'}
+            >
+              <span className={`text-base ${refreshing ? 'animate-spin' : ''}`}>
+                🔄
+              </span>
+            </Button>
+          )}
+          <span className="text-xs font-medium text-muted-foreground bg-secondary/70 px-3 py-1 rounded-full">
+            상위 {Math.min(records.length, 10)}명
+          </span>
+        </div>
       </div>
       <div className="rounded-xl border border-border/60 bg-card p-2 overflow-hidden">
         <div className="overflow-x-auto">
@@ -185,7 +296,15 @@ export const RankingList = memo(function RankingList({
                         <span className="truncate">{escapeHtml(record.nickname)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-semibold text-foreground tabular-nums">
+                    <TableCell 
+                      className={`text-right font-semibold text-foreground tabular-nums ${
+                        isAdmin && record.discordId 
+                          ? 'cursor-pointer hover:bg-primary/10 rounded px-2 py-1 transition-colors' 
+                          : ''
+                      }`}
+                      onClick={() => handleScoreClick(record)}
+                      title={isAdmin && record.discordId ? '클릭하여 점수 변경' : ''}
+                    >
                       {record.score.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground text-xs hidden sm:table-cell">
@@ -198,6 +317,66 @@ export const RankingList = memo(function RankingList({
           </Table>
         </div>
       </div>
+
+      {/* 점수 변경 다이얼로그 (관리자 전용) */}
+      {isAdmin && editingRecord && (
+        <Dialog open={!!editingRecord} onOpenChange={handleCloseEditDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>점수 변경</DialogTitle>
+              <DialogDescription>
+                {escapeHtml(editingRecord.nickname)}님의 점수를 변경합니다.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  현재 점수
+                </label>
+                <div className="text-lg font-semibold text-muted-foreground">
+                  {editingRecord.score.toLocaleString()}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="score-input" className="text-sm font-medium text-foreground">
+                  새 점수
+                </label>
+                <Input
+                  id="score-input"
+                  type="number"
+                  min="0"
+                  value={editScore}
+                  onChange={(e) => setEditScore(e.target.value)}
+                  placeholder="점수를 입력하세요"
+                  disabled={updating}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !updating) {
+                      handleUpdateScore();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCloseEditDialog}
+                disabled={updating}
+                className="flex-1"
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleUpdateScore}
+                disabled={updating || !editScore}
+                className="flex-1"
+              >
+                {updating ? '변경 중...' : '변경'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 });

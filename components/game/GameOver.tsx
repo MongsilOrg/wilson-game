@@ -20,12 +20,14 @@ export const GameOver = memo(function GameOver({ onRankingRefresh }: GameOverPro
   const { gameState, score, restartGame } = useGameContext();
   const [open, setOpen] = useState(false);
 
-  // 게임 종료 시 랭킹 새로고침
+  // 게임 종료 시 랭킹 새로고침 (기록 저장 완료 대기)
+  // endGame에서 기록 저장이 완료된 후에 랭킹을 새로고침하도록 함
+  // 기록 저장은 비동기이므로 충분한 시간 대기 (2초)
   useEffect(() => {
     if (gameState === 'gameOver' && onRankingRefresh) {
       const timer = setTimeout(() => {
         onRankingRefresh();
-      }, 500);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [gameState, onRankingRefresh]);
