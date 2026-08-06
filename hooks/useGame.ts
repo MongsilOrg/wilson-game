@@ -10,7 +10,14 @@ import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api-client';
 
 export function useGame() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // 캔버스는 뷰포트 변화로 언마운트됐다 다시 붙는다. 그때 렌더러와 입력 핸들러를
+  // 새 엘리먼트에 다시 묶지 않으면 화면이 비고 드래그가 먹지 않는다.
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
+    canvasRef.current = node;
+    setCanvasEl(node);
+  }, []);
   const gridRef = useRef<Grid | null>(null);
   const fruitRendererRef = useRef<FruitRenderer | null>(null);
   const inputHandlerRef = useRef<InputHandler | null>(null);
@@ -99,14 +106,18 @@ export function useGame() {
       centerCol = Math.floor(centerCol / coordsToRemove.length);
       
       // 제거 애니메이션 시작
+      const removingValues = coordsToRemove.map(
+        ([row, col]) => gridRef.current?.getValue(row, col) ?? 0
+      );
       setRemovingFruits((prev: RemovingAnimation[]) => [...prev, {
         coords: coordsToRemove,
+        values: removingValues,
         progress: 0
       }]);
-      
+
       // 점수 증가 (제거한 사과 수만큼, 빈 칸 제외)
       setScore((prev: number) => prev + coordsToRemove.length);
-      
+
       // 사과 제거
       gridRef.current.removeMultiple(coordsToRemove);
     }
@@ -337,33 +348,32 @@ export function useGame() {
             continue;
           }
           
-          let isRemoving = false;
-          let removeProgress = 0;
-          for (const anim of removingFruits) {
-            if (includesCoord(anim.coords, [row, col])) {
-              isRemoving = true;
-              removeProgress = anim.progress;
-              break;
-            }
-          }
-          
-          if (isRemoving) {
-            const alpha = 1 - removeProgress;
-            const scale = 1 - removeProgress * 0.5;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            ctx.scale(scale, scale);
-            const offsetX = col * cellSize + cellSize / 2;
-            const offsetY = row * cellSize + cellSize / 2;
-            ctx.translate(offsetX, offsetY);
-            fruitRendererRef.current.drawFruit(0, 0, value, false, 1);
-            ctx.restore();
-          } else {
-            const selectedCells = inputHandlerRef.current.getSelectedCells();
-            const isSelected = includesCoord(selectedCells, [row, col]);
-            fruitRendererRef.current.drawFruit(col, row, value, isSelected);
-          }
+          const selectedCells = inputHandlerRef.current.getSelectedCells();
+          const isSelected = includesCoord(selectedCells, [row, col]);
+          fruitRendererRef.current.drawFruit(col, row, value, isSelected);
         }
+      }
+
+      // 제거된 칸은 격자에 남아 있지 않으므로 애니메이션에서 따로 그린다.
+      for (const anim of removingFruits) {
+        const alpha = 1 - anim.progress;
+        const scale = 1 - anim.progress * 0.5;
+
+        anim.coords.forEach(([row, col], index) => {
+          const value = anim.values[index];
+          if (!value) return;
+
+          const centerX = col * cellSize + cellSize / 2;
+          const centerY = row * cellSize + cellSize / 2;
+
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(centerX, centerY);
+          ctx.scale(scale, scale);
+          ctx.translate(-centerX, -centerY);
+          fruitRendererRef.current!.drawFruit(col, row, value, false);
+          ctx.restore();
+        });
       }
     }
 
@@ -482,9 +492,15 @@ export function useGame() {
     return () => observer.disconnect();
   }, [setupCanvas, draw]);
 
-  // cellSize 변경 시 fruitRenderer와 inputHandler 업데이트
+  // 캔버스가 다시 붙으면 크기부터 다시 잡는다.
   useEffect(() => {
-    const canvas = canvasRef.current;
+    if (!canvasEl) return;
+    setupCanvas();
+  }, [canvasEl, setupCanvas]);
+
+  // cellSize나 캔버스 엘리먼트가 바뀌면 fruitRenderer와 inputHandler를 새로 묶는다
+  useEffect(() => {
+    const canvas = canvasEl;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx || cellSize === 0 || !gridRef.current) return;
 
@@ -505,10 +521,10 @@ export function useGame() {
         inputHandlerRef.current.cleanup();
       }
     };
-  }, [cellSize, handleSelection]);
+  }, [canvasEl, cellSize, handleSelection]);
 
   return {
-    canvasRef,
+    canvasRef: attachCanvas,
     gameState,
     score,
     timeLeft,

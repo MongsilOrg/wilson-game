@@ -8,7 +8,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { logger } from '@/lib/logger';
 import { LoginErrorDialog } from '@/components/auth/LoginErrorDialog';
 
-type ErrorType = 'NOT_MEMBER' | 'NOT_VERIFIED' | null;
+type ErrorType = 'NOT_MEMBER' | 'NOT_VERIFIED' | 'TEMPORARY_ERROR' | null;
+
+const ERROR_TYPES: ReadonlySet<string> = new Set(['NOT_MEMBER', 'NOT_VERIFIED', 'TEMPORARY_ERROR']);
 
 export function DiscordLoginButton() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,71 +22,20 @@ export function DiscordLoginButton() {
   // URL 쿼리 파라미터에서 에러 확인
   useEffect(() => {
     const error = searchParams.get('error');
-    if (error) {
-      // NextAuth가 에러 메시지를 URL 인코딩하므로 디코딩 필요
-      const decodedError = decodeURIComponent(error);
-      
-      // 에러 타입 확인 (다양한 형태의 에러 메시지 처리)
-      // NextAuth v5에서는 에러가 "AccessDenied" 같은 형태로 변환될 수 있으므로,
-      // 에러 메시지에 특정 키워드가 포함되어 있는지 확인
-      if (
-        decodedError.includes('NOT_MEMBER') || 
-        error === 'NOT_MEMBER' ||
-        decodedError.toLowerCase().includes('not_member')
-      ) {
-        setErrorType('NOT_MEMBER');
-        setShowErrorDialog(true);
-        // URL에서 에러 파라미터 제거
-        const newSearchParams = new URLSearchParams(searchParams.toString());
-        newSearchParams.delete('error');
-        const newUrl = newSearchParams.toString() 
-          ? `${window.location.pathname}?${newSearchParams.toString()}`
-          : window.location.pathname;
-        router.replace(newUrl);
-      } else if (
-        decodedError.includes('NOT_VERIFIED') || 
-        error === 'NOT_VERIFIED' ||
-        decodedError.toLowerCase().includes('not_verified')
-      ) {
-        setErrorType('NOT_VERIFIED');
-        setShowErrorDialog(true);
-        // URL에서 에러 파라미터 제거
-        const newSearchParams = new URLSearchParams(searchParams.toString());
-        newSearchParams.delete('error');
-        const newUrl = newSearchParams.toString() 
-          ? `${window.location.pathname}?${newSearchParams.toString()}`
-          : window.location.pathname;
-        router.replace(newUrl);
-      } else if (error === 'AccessDenied' || decodedError === 'AccessDenied') {
-        // NextAuth가 에러를 "AccessDenied"로 변환한 경우
-        // 서버에서 설정한 에러 타입을 확인하기 위해 추가 쿼리 파라미터 확인
-        const errorTypeParam = searchParams.get('errorType');
-        if (errorTypeParam === 'NOT_MEMBER' || errorTypeParam === 'NOT_VERIFIED') {
-          setErrorType(errorTypeParam as ErrorType);
-          setShowErrorDialog(true);
-          // URL에서 에러 파라미터 제거
-          const newSearchParams = new URLSearchParams(searchParams.toString());
-          newSearchParams.delete('error');
-          newSearchParams.delete('errorType');
-          const newUrl = newSearchParams.toString() 
-            ? `${window.location.pathname}?${newSearchParams.toString()}`
-            : window.location.pathname;
-          router.replace(newUrl);
-        } else {
-          // 에러 타입이 없는 경우, 일반적인 AccessDenied로 처리
-          // 사용자에게 안내 메시지 표시
-          setErrorType('NOT_VERIFIED'); // 기본값으로 NOT_VERIFIED 사용
-          setShowErrorDialog(true);
-          // URL에서 에러 파라미터 제거
-          const newSearchParams = new URLSearchParams(searchParams.toString());
-          newSearchParams.delete('error');
-          const newUrl = newSearchParams.toString() 
-            ? `${window.location.pathname}?${newSearchParams.toString()}`
-            : window.location.pathname;
-          router.replace(newUrl);
-        }
-      }
-    }
+    if (!error) return;
+
+    const errorTypeParam = searchParams.get('errorType');
+    // 사유를 알 수 없으면 특정 원인으로 단정하지 않는다.
+    setErrorType(ERROR_TYPES.has(errorTypeParam ?? '') ? (errorTypeParam as ErrorType) : 'TEMPORARY_ERROR');
+    setShowErrorDialog(true);
+
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete('error');
+    newSearchParams.delete('errorType');
+    const newUrl = newSearchParams.toString()
+      ? `${window.location.pathname}?${newSearchParams.toString()}`
+      : window.location.pathname;
+    router.replace(newUrl);
   }, [searchParams, router]);
 
   const handleLogin = async () => {

@@ -2,7 +2,6 @@
 
 import { memo, useEffect, useState, useMemo, useCallback } from 'react';
 import { GameRecord } from '@/types/game';
-import { escapeHtml } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api-client';
 import { useSession } from '@/hooks/useSession';
@@ -295,7 +294,7 @@ export const RankingList = memo(function RankingList({
                         {record.avatarUrl ? (
                           <img
                             src={record.avatarUrl}
-                            alt={escapeHtml(record.nickname)}
+                            alt={record.nickname}
                             className="w-8 h-8 rounded-full flex-shrink-0"
                             onError={(e) => {
                               // 이미지 로드 실패 시 기본 아바타로 대체
@@ -305,10 +304,10 @@ export const RankingList = memo(function RankingList({
                           />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-muted flex-shrink-0 flex items-center justify-center text-xs font-semibold text-muted-foreground">
-                            {escapeHtml(record.nickname).charAt(0).toUpperCase()}
+                            {record.nickname.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        <span className="truncate">{escapeHtml(record.nickname)}</span>
+                        <span className="truncate">{record.nickname}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-semibold text-foreground tabular-nums">
@@ -332,7 +331,7 @@ export const RankingList = memo(function RankingList({
             <DialogHeader className="space-y-2">
               <DialogTitle className="text-xl font-bold">기록 수정</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                {escapeHtml(editingRecord.nickname)}님의 기록을 수정합니다.
+                {editingRecord.nickname}님의 기록을 수정합니다.
               </DialogDescription>
             </DialogHeader>
             
@@ -352,7 +351,7 @@ export const RankingList = memo(function RankingList({
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  현재: {escapeHtml(editingRecord.nickname)}
+                  현재: {editingRecord.nickname}
                 </p>
               </div>
 

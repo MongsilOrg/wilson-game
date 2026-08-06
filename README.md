@@ -11,12 +11,18 @@
 - 디스코드 OAuth 로그인과 서버 멤버십, 학적 인증 역할 검증
 - 디스코드 계정 기준 최고 점수 기록, 동점이면 먼저 달성한 기록이 우선
 - 상위 10명 랭킹, 조회할 때마다 디스코드에서 닉네임과 아바타를 최신화
-- 관리자 전용 랭킹 새로고침, 점수 수정 API
+- 관리자 전용 랭킹 새로고침, 점수 수정, 기록 삭제 API
 - 라이트, 다크 테마와 배경음악 볼륨 조절
 
 ## 동작 방식
 
-게임 보드는 HTML5 Canvas와 requestAnimationFrame 루프로 그린다. 로그인 시 봇 토큰으로 디스코드 API를 호출해 서버 멤버십과 학적 인증 역할을 확인하고, 둘 중 하나라도 없으면 로그인을 차단한다. 기록은 JSON으로 저장하며 `BLOB_READ_WRITE_TOKEN`이 있으면 Blob 저장소에, 없으면 로컬 파일 `data/records.json`에 쓴다.
+게임 보드는 HTML5 Canvas와 requestAnimationFrame 루프로 그린다. 로그인 시 봇 토큰으로 디스코드 API를 호출해 서버 멤버십과 학적 인증 역할을 확인하고, 둘 중 하나라도 없으면 로그인을 차단한다. 기록 저장 시점에도 같은 확인을 다시 하므로 서버를 나가거나 역할을 잃으면 그때부터 기록이 저장되지 않는다.
+
+기록은 JSON 배열 하나로 저장하며 `BLOB_READ_WRITE_TOKEN`이 있으면 Blob 저장소에, 없으면 로컬 파일 `data/records.json`에 쓴다. 저장은 읽은 시점의 ETag를 조건으로 걸어 다른 요청이 먼저 쓴 경우 다시 읽어 재시도한다. 저장소를 읽지 못하면 저장을 건너뛴다.
+
+## 저장하는 정보
+
+랭킹에 필요한 디스코드 사용자 ID, 표시 이름, 아바타 URL, 점수, 달성 시각을 기록한다. 삭제를 원하면 관리자에게 요청하면 되고, 관리자는 기록 삭제 API로 지운다. 방문 통계는 Vercel Analytics로 집계한다.
 
 ## 실행
 
@@ -39,6 +45,13 @@ npm run build
 npm start
 ```
 
+테스트와 린트.
+
+```bash
+npm test
+npm run lint
+```
+
 ## 설정
 
 | 키 | 설명 |
@@ -47,6 +60,8 @@ npm start
 | `DISCORD_CLIENT_SECRET` | 디스코드 OAuth 앱 클라이언트 시크릿 |
 | `DISCORD_BOT_TOKEN` | 멤버십과 역할 조회에 쓰는 디스코드 봇 토큰 |
 | `DISCORD_GUILD_ID` | 대상 디스코드 서버 ID, 미설정 시 코드의 기본값 사용 |
+| `DISCORD_VERIFIED_ROLE_IDS` | 학적 인증으로 인정할 역할 ID 목록, 쉼표로 구분 |
+| `ADMIN_DISCORD_IDS` | 관리자 디스코드 사용자 ID 목록, 쉼표로 구분 |
 | `NEXTAUTH_SECRET` | NextAuth 세션 서명 키 |
 | `NEXTAUTH_URL` | 사이트 URL, 프로덕션에서만 필수 |
 | `BLOB_READ_WRITE_TOKEN` | 기록 저장용 Blob 저장소 토큰, 미설정 시 로컬 파일에 저장 |

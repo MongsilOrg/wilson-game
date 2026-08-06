@@ -53,36 +53,46 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
     }
   }, []);
 
+  // volume을 의존성에 넣으면 볼륨을 움직일 때마다 오디오가 새로 생성되어 재생이 끊긴다.
+  const volumeRef = useRef(volume);
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      audioRef.current = new Audio(src);
-      audioRef.current.loop = loop;
-      audioRef.current.volume = volume;
+    volumeRef.current = volume;
+  }, [volume]);
 
-      const audio = audioRef.current;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-      const handleEnded = () => {
-        setIsPlaying(false);
-      };
+    const audio = new Audio(src);
+    audio.loop = loop;
+    audio.volume = volumeRef.current;
+    audioRef.current = audio;
 
-      audio.addEventListener('ended', handleEnded);
+    const handleEnded = () => {
+      setIsPlaying(false);
+    };
 
-      // autoPlay가 true이면 자동 재생
-      if (autoPlay) {
-        audio.play().then(() => {
-          setIsPlaying(true);
-        }).catch((error) => {
-          logger.error('Auto play failed:', error);
-        });
-      }
+    audio.addEventListener('ended', handleEnded);
 
-      return () => {
-        audio.removeEventListener('ended', handleEnded);
-        audio.pause();
-        audio.src = '';
-      };
+    // autoPlay가 true이면 자동 재생
+    if (autoPlay) {
+      audio.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
+        logger.error('Auto play failed:', error);
+      });
     }
-  }, [src, loop, autoPlay, volume]);
+
+    return () => {
+      audio.removeEventListener('ended', handleEnded);
+      audio.pause();
+      audio.src = '';
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
+      setIsPlaying(false);
+    };
+  }, [src, loop, autoPlay]);
 
   // 볼륨 변경 시 오디오에 적용
   useEffect(() => {

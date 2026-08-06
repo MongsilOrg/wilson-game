@@ -51,21 +51,3 @@ export function includesCoord(array: [number, number][], coord: [number, number]
   return array.some(c => isSameCoord(c, coord));
 }
 
-/**
- * HTML 이스케이프
- */
-export function escapeHtml(text: string): string {
-  if (typeof document === 'undefined') {
-    // 서버 사이드에서는 간단한 이스케이프만 수행
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-

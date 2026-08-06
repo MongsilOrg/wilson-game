@@ -4,7 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Info, ExternalLink } from 'lucide-react';
 
-type ErrorType = 'NOT_MEMBER' | 'NOT_VERIFIED';
+type ErrorType = 'NOT_MEMBER' | 'NOT_VERIFIED' | 'TEMPORARY_ERROR';
+
+const INVITE_URL = process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || 'https://discord.gg/EpBHHbQrMv';
 
 interface LoginErrorDialogProps {
   open: boolean;
@@ -12,30 +14,43 @@ interface LoginErrorDialogProps {
   errorType: ErrorType | null;
 }
 
+const CONTENT: Record<ErrorType, { title: string; description: string; details: string[]; link: string | null }> = {
+  NOT_MEMBER: {
+    title: '루미아 캠퍼스 서버 가입이 필요합니다',
+    description: '윌슨게임을 이용하려면 루미아 캠퍼스 디스코드 서버에 가입하고 학적 인증을 완료해주세요.',
+    details: [
+      '루미아 캠퍼스 디스코드 서버에 가입되어 있지 않습니다.',
+      '아래 링크를 통해 루미아 캠퍼스 서버에 가입해주세요.',
+      '가입 후 반드시 학적 인증을 완료해야 합니다.',
+      '학적 인증 완료 후 잠시 기다린 뒤 다시 로그인을 시도해주세요.',
+    ],
+    link: '루미아 캠퍼스 가입하기',
+  },
+  NOT_VERIFIED: {
+    title: '학적 인증이 필요합니다',
+    description: '윌슨게임을 이용하려면 루미아 캠퍼스에서 학적 인증을 완료해주세요.',
+    details: [
+      '루미아 캠퍼스 디스코드 서버에는 가입되어 있지만, 학적 인증 역할이 부여되지 않았습니다.',
+      '루미아 캠퍼스 서버에서 학적 인증을 완료해주세요.',
+      '인증 완료 후 잠시 기다린 뒤 다시 로그인을 시도해주세요.',
+    ],
+    link: '루미아 캠퍼스로 이동',
+  },
+  TEMPORARY_ERROR: {
+    title: '지금은 로그인할 수 없습니다',
+    description: '일시적인 문제로 로그인 확인에 실패했습니다. 가입이나 인증 상태와는 무관합니다.',
+    details: [
+      '잠시 후 다시 로그인을 시도해주세요.',
+      '반복해서 실패하면 관리자에게 알려주세요.',
+    ],
+    link: null,
+  },
+};
+
 export function LoginErrorDialog({ open, onOpenChange, errorType }: LoginErrorDialogProps) {
   if (!errorType) return null;
 
-  const isNotMember = errorType === 'NOT_MEMBER';
-  const title = isNotMember 
-    ? '루미아 캠퍼스 서버 가입이 필요합니다'
-    : '학적 인증이 필요합니다';
-  
-  const description = isNotMember
-    ? '윌슨게임을 이용하려면 루미아 캠퍼스 디스코드 서버에 가입하고 학적 인증을 완료해주세요.'
-    : '윌슨게임을 이용하려면 루미아 캠퍼스에서 학적 인증을 완료해주세요.';
-
-  const details = isNotMember
-    ? [
-        '루미아 캠퍼스 디스코드 서버에 가입되어 있지 않습니다.',
-        '아래 링크를 통해 루미아 캠퍼스 서버에 가입해주세요.',
-        '가입 후 반드시 학적 인증을 완료해야 합니다.',
-        '학적 인증 완료 후 잠시 기다린 뒤 다시 로그인을 시도해주세요.',
-      ]
-    : [
-        '루미아 캠퍼스 디스코드 서버에는 가입되어 있지만, 학적 인증 역할이 부여되지 않았습니다.',
-        '루미아 캠퍼스 서버에서 학적 인증을 완료해주세요.',
-        '인증 완료 후 잠시 기다린 뒤 다시 로그인을 시도해주세요.',
-      ];
+  const { title, description, details, link } = CONTENT[errorType];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,18 +77,20 @@ export function LoginErrorDialog({ open, onOpenChange, errorType }: LoginErrorDi
             </ul>
           </div>
           
-          <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
-            <a
-              href="https://discord.gg/EpBHHbQrMv"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center whitespace-nowrap rounded-full text-base font-semibold h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 active:translate-y-[1px] gap-2"
-            >
-              <ExternalLink className="h-4 w-4" />
-              {isNotMember ? '루미아 캠퍼스 가입하기' : '루미아 캠퍼스로 이동'}
-            </a>
-          </div>
-          
+          {link && (
+            <div className="pt-3 border-t border-blue-200 dark:border-blue-800">
+              <a
+                href={INVITE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center whitespace-nowrap rounded-full text-base font-semibold h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60 active:translate-y-[1px] gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                {link}
+              </a>
+            </div>
+          )}
+
           <p className="text-xs text-blue-700 dark:text-blue-300 pt-2 border-t border-blue-200 dark:border-blue-800">
             문제가 계속되면 루미아 캠퍼스 디스코드 서버 관리자에게 문의해주세요.
           </p>
