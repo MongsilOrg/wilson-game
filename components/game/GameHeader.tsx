@@ -25,7 +25,9 @@ export const GameHeader = memo(function GameHeader() {
             <Trophy className="h-4 w-4 text-foreground" />
             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">점수</div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold text-foreground tabular-nums">{score}</div>
+          <div className="text-3xl sm:text-4xl font-bold text-foreground tabular-nums" aria-live="polite">
+            {score}
+          </div>
         </CardContent>
       </Card>
       <Card className="border border-border/70 bg-card shadow-none">
@@ -35,6 +37,10 @@ export const GameHeader = memo(function GameHeader() {
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">남은 시간</div>
           </div>
           <div
+            role="timer"
+            // 초마다 읽으면 시끄러우므로 경고 구간에서만 알린다.
+            aria-live={isCritical ? 'assertive' : 'off'}
+            aria-label={`남은 시간 ${formattedTime}`}
             className={`text-3xl sm:text-4xl font-bold tabular-nums transition-colors duration-300 ${
               isCritical
                 ? 'text-destructive'

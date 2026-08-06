@@ -1,18 +1,21 @@
 import { SelectedArea } from '@/types/game';
+import { BoardPalette } from '@/lib/board-palette';
 
 export class FruitRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private cellSize: number;
+  private palette: BoardPalette;
   private wilsonImages: Map<number, HTMLImageElement>;
   private imageSizes: Map<number, { width: number; height: number }>;
   private gridWidth: number;
   private gridHeight: number;
 
-  constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, cellSize: number, gridWidth: number = 17, gridHeight: number = 10) {
+  constructor(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, cellSize: number, palette: BoardPalette, gridWidth: number = 17, gridHeight: number = 10) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.cellSize = cellSize;
+    this.palette = palette;
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.wilsonImages = new Map();
@@ -42,66 +45,59 @@ export class FruitRenderer {
     const cellY = row * this.cellSize;
     const x = cellX + this.cellSize / 2;
     const y = cellY + this.cellSize / 2;
-    const size = this.cellSize; // 셀 크기 기준 정사각형 영역 (항상 1:1)
-    const halfSize = size / 2;
+    // 가로/세로 중 작은 값을 써서 항상 정사각형을 유지한다.
+    const renderSize = Math.min(
+      this.canvas.width / this.gridWidth,
+      this.canvas.height / this.gridHeight
+    );
+    const renderHalfSize = renderSize / 2;
 
-    this.ctx.save();
-    this.ctx.globalAlpha = alpha;
-
-    // 셀 경계로 클리핑 (넘어가는 부분 자르기)
-    this.ctx.beginPath();
-    this.ctx.rect(cellX, cellY, this.cellSize, this.cellSize);
-    this.ctx.clip();
-
-    // 선택된 윌슨은 하이라이트
-    if (isSelected) {
-      this.ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
-      this.ctx.shadowBlur = 15;
-      
-      // 선택된 경우 테두리 그리기
-      this.ctx.strokeStyle = '#FFD700';
-      this.ctx.lineWidth = 3;
-      this.ctx.beginPath();
-      this.ctx.arc(x, y, halfSize + 2, 0, Math.PI * 2);
-      this.ctx.stroke();
-    }
-
-    // 해당 숫자의 윌슨 이미지 가져오기
     const wilsonImage = this.wilsonImages.get(value);
     if (!wilsonImage) return;
 
     const sizeInfo = this.imageSizes.get(value);
     const iw = sizeInfo?.width || wilsonImage.naturalWidth || wilsonImage.width || 0;
     const ih = sizeInfo?.height || wilsonImage.naturalHeight || wilsonImage.height || 0;
+    if (iw <= 0 || ih <= 0) return;
 
-    if (iw > 0 && ih > 0) {
-      // 원본 이미지에서 중앙 정사각형 영역만 사용 (더 짧은 변 기준)
-      const srcSize = Math.min(iw, ih);
-      const sx = (iw - srcSize) / 2;
-      const sy = (ih - srcSize) / 2;
+    // 원본 이미지에서 중앙 정사각형 영역만 사용
+    const srcSize = Math.min(iw, ih);
+    const sx = (iw - srcSize) / 2;
+    const sy = (ih - srcSize) / 2;
 
-      // 실제 셀 크기 계산 (가로/세로 중 작은 값 사용하여 정사각형 보장)
-      // 캔버스의 실제 크기와 그리드 크기를 고려
-      const actualCellWidth = this.canvas.width / this.gridWidth;
-      const actualCellHeight = this.canvas.height / this.gridHeight;
-      // 더 작은 값을 사용하여 항상 정사각형 보장
-      const renderSize = Math.min(actualCellWidth, actualCellHeight);
-      const renderHalfSize = renderSize / 2;
+    this.ctx.save();
+    this.ctx.globalAlpha = alpha;
 
-      // drawImage: (image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-      // 소스와 대상 모두 정사각형으로 설정하여 1:1 비율 보장
-      this.ctx.drawImage(
-        wilsonImage,
-        sx,           // 소스 x (정사각형 영역의 시작)
-        sy,           // 소스 y (정사각형 영역의 시작)
-        srcSize,      // 소스 너비 (정사각형)
-        srcSize,      // 소스 높이 (정사각형)
-        x - renderHalfSize,  // 대상 x (중앙 정렬)
-        y - renderHalfSize,  // 대상 y (중앙 정렬)
-        renderSize,   // 대상 너비 (정사각형)
-        renderSize    // 대상 높이 (정사각형)
-      );
+    // 선택 하이라이트는 클리핑 밖에서 그려야 잘리지 않는다.
+    if (isSelected) {
+      this.ctx.save();
+      this.ctx.shadowColor = this.palette.selectedGlow;
+      this.ctx.shadowBlur = 15;
+      this.ctx.strokeStyle = this.palette.selectedRing;
+      this.ctx.lineWidth = 3;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, renderHalfSize - 1, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.restore();
     }
+
+    // 윌슨 이미지는 흰 사각형 배경을 포함한다. 원형으로 잘라내지 않으면
+    // 다크 테마에서 판 전체가 흰 타일로 덮인다.
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, renderHalfSize, 0, Math.PI * 2);
+    this.ctx.clip();
+
+    this.ctx.drawImage(
+      wilsonImage,
+      sx,
+      sy,
+      srcSize,
+      srcSize,
+      x - renderHalfSize,
+      y - renderHalfSize,
+      renderSize,
+      renderSize
+    );
 
     this.ctx.restore();
   }
@@ -120,14 +116,13 @@ export class FruitRenderer {
 
     this.ctx.save();
 
-    // 반투명 배경 (라이트/다크 모두에서 자연스럽게 보이는 옅은 노란색)
-    this.ctx.fillStyle = 'rgba(234, 179, 8, 0.18)'; // amber-400 비슷한 톤
+    this.ctx.fillStyle = this.palette.selectionFill;
     this.ctx.fillRect(x, y, width, height);
 
     // 테두리
-    this.ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)'; // amber-300/400
+    this.ctx.strokeStyle = this.palette.selectionStroke;
     this.ctx.lineWidth = 3;
-    this.ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
+    this.ctx.shadowColor = this.palette.selectionGlow;
     this.ctx.shadowBlur = 10;
     this.ctx.strokeRect(x + 1, y + 1, width - 2, height - 2);
 
@@ -138,12 +133,11 @@ export class FruitRenderer {
    * 그리드 배경 그리기
    */
   drawGrid(gridWidth: number = 17, gridHeight: number = 10): void {
-    // 전체 배경색 채우기 (흰색)
-    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.fillStyle = this.palette.surface;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // 그리드 라인 그리기
-    this.ctx.strokeStyle = '#E0E0E0';
+    this.ctx.strokeStyle = this.palette.gridLine;
     this.ctx.lineWidth = 1;
 
     for (let row = 0; row <= gridHeight; row++) {
@@ -171,7 +165,7 @@ export class FruitRenderer {
     const cellY = row * this.cellSize;
     
     this.ctx.save();
-    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.fillStyle = this.palette.surface;
     this.ctx.fillRect(cellX, cellY, this.cellSize, this.cellSize);
     this.ctx.restore();
   }

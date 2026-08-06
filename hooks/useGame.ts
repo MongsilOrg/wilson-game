@@ -6,6 +6,8 @@ import { FruitRenderer } from '@/lib/fruit-renderer';
 import { InputHandler } from '@/lib/input-handler';
 import { GameState, GameRecord, RemovingAnimation, GRID_WIDTH, GRID_HEIGHT } from '@/types/game';
 import { includesCoord } from '@/lib/utils';
+import { readBoardPalette, BoardPalette } from '@/lib/board-palette';
+import { useTheme } from '@/contexts/ThemeContext';
 import { logger } from '@/lib/logger';
 import { apiClient } from '@/lib/api-client';
 
@@ -31,6 +33,14 @@ export function useGame() {
   const [cellSize, setCellSize] = useState(0);
   const [removingFruits, setRemovingFruits] = useState<RemovingAnimation[]>([]);
   const [playerNickname, setPlayerNickname] = useState('');
+
+  // 캔버스는 CSS를 못 쓰므로 테마가 바뀔 때마다 색을 다시 읽어 넘긴다.
+  const { theme } = useTheme();
+  const [palette, setPalette] = useState<BoardPalette | null>(null);
+
+  useEffect(() => {
+    setPalette(readBoardPalette());
+  }, [theme]);
 
   /**
    * Canvas 크기 설정 (부모 컨테이너 너비 기반, 종횡비 고정)
@@ -162,7 +172,7 @@ export function useGame() {
       setCellSize(newCellSize);
 
       gridRef.current = new Grid();
-      fruitRendererRef.current = new FruitRenderer(canvas, ctx, newCellSize, GRID_WIDTH, GRID_HEIGHT);
+      fruitRendererRef.current = new FruitRenderer(canvas, ctx, newCellSize, readBoardPalette(), GRID_WIDTH, GRID_HEIGHT);
       inputHandlerRef.current = new InputHandler(
         canvas,
         gridRef.current,
@@ -477,13 +487,13 @@ export function useGame() {
   useEffect(() => {
     const canvas = canvasEl;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx || cellSize === 0 || !gridRef.current) return;
+    if (!canvas || !ctx || cellSize === 0 || !gridRef.current || !palette) return;
 
     if (inputHandlerRef.current) {
       inputHandlerRef.current.cleanup();
     }
 
-    fruitRendererRef.current = new FruitRenderer(canvas, ctx, cellSize, GRID_WIDTH, GRID_HEIGHT);
+    fruitRendererRef.current = new FruitRenderer(canvas, ctx, cellSize, palette, GRID_WIDTH, GRID_HEIGHT);
     inputHandlerRef.current = new InputHandler(
       canvas,
       gridRef.current,
@@ -496,7 +506,7 @@ export function useGame() {
         inputHandlerRef.current.cleanup();
       }
     };
-  }, [canvasEl, cellSize, handleSelection]);
+  }, [canvasEl, cellSize, handleSelection, palette]);
 
   return {
     canvasRef: attachCanvas,

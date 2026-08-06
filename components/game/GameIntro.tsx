@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Trophy, RotateCcw, LogOut } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
-import { AudioControl } from '@/components/game/AudioControl';
 import { useSession } from '@/hooks/useSession';
 import { signOut } from 'next-auth/react';
 import { GameRecord } from '@/types/game';
@@ -93,17 +91,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
 
   return (
     <div className="animate-fade-in space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-lg font-semibold text-foreground">
-            게임 시작
-          </h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <AudioControl />
-        </div>
-      </div>
+      <h3 className="text-lg font-semibold text-foreground">내 기록</h3>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
@@ -112,7 +100,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
       ) : !isAuthenticated || !isVerified ? (
         <div className="flex items-center justify-center py-8">
           <p className="text-sm text-muted-foreground text-center">
-            게임을 시작하려면 로그인 및 학적 인증이 필요합니다
+            로그인하면 최고 기록이 여기에 표시됩니다
           </p>
         </div>
       ) : (
@@ -144,16 +132,14 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          {gameState !== 'waiting' && (
             <Button
               onClick={handleStart}
-              className="flex-1 min-h-[44px] px-5 font-semibold"
-              variant={gameState === 'waiting' || gameState === 'gameOver' ? 'default' : 'secondary'}
+              className="w-full min-h-[44px] px-5 font-semibold"
+              variant={gameState === 'gameOver' ? 'default' : 'secondary'}
               size="lg"
             >
-              {gameState === 'waiting' ? (
-                '게임 시작'
-              ) : gameState === 'gameOver' ? (
+              {gameState === 'gameOver' ? (
                 '새 게임 시작'
               ) : (
                 <>
@@ -162,7 +148,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
                 </>
               )}
             </Button>
-          </div>
+          )}
 
           {gameState === 'playing' && (
             <div className="flex items-center gap-2 text-xs text-success font-semibold">

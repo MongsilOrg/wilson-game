@@ -26,6 +26,13 @@ import {
 
 const ADMIN_DISCORD_ID = '602522819594551306';
 
+// 금 / 은 / 동. 1위와 3위가 같은 색이면 등수 구분이 사라진다.
+const MEDALS = {
+  1: { color: 'text-amber-500 dark:text-amber-300', bg: 'bg-amber-500/10', border: 'border-amber-500/70' },
+  2: { color: 'text-slate-500 dark:text-slate-300', bg: 'bg-slate-500/10', border: 'border-slate-400/70' },
+  3: { color: 'text-orange-700 dark:text-orange-400', bg: 'bg-orange-700/10', border: 'border-orange-700/60' },
+} as const;
+
 interface RankingListProps {
   refreshTrigger?: number;
   initialRecords?: GameRecord[];
@@ -211,7 +218,7 @@ export const RankingList = memo(function RankingList({
           </span>
         </div>
         <div className="rounded-xl border border-dashed border-border/60 bg-card px-6 py-10 text-center space-y-2">
-          <div className="text-4xl mb-2">🏆</div>
+          <img src="/wilson/number_1.png" alt="" aria-hidden="true" className="mx-auto mb-2 h-12 w-12" />
           <p className="text-base font-medium text-foreground">아직 기록이 없습니다</p>
           <p className="text-sm text-muted-foreground">첫 기록을 남겨보세요.</p>
         </div>
@@ -219,14 +226,18 @@ export const RankingList = memo(function RankingList({
     );
   }
 
+  // 랭킹에서 분 단위까지는 필요 없다. 전체 시각은 title로만 남긴다.
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    return `${month}월 ${day}일`;
+  };
+
+  const formatFullDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
   };
 
   return (
@@ -243,9 +254,7 @@ export const RankingList = memo(function RankingList({
               className="h-8 w-8 p-0"
               title={refreshing ? '새로고침 중...' : '새로고침'}
             >
-              <span className={`text-base ${refreshing ? 'animate-spin' : ''}`}>
-                🔄
-              </span>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
           )}
           <span className="text-xs font-medium text-muted-foreground bg-secondary/70 px-3 py-1 rounded-full">
@@ -267,27 +276,41 @@ export const RankingList = memo(function RankingList({
             <TableBody>
               {records.map((record: GameRecord, index: number) => {
                 const rank = index + 1;
-                const isTopThree = rank <= 3;
-                const rankConfig = {
-                  1: { color: 'text-amber-400 dark:text-amber-300', bg: 'bg-amber-500/5 dark:bg-amber-400/10', border: 'border-amber-400/50 dark:border-amber-300/50' },
-                  2: { color: 'text-slate-500 dark:text-slate-200', bg: 'bg-slate-400/5 dark:bg-slate-500/10', border: 'border-slate-300/50 dark:border-slate-500/60' },
-                  3: { color: 'text-amber-500 dark:text-amber-200', bg: 'bg-amber-500/5 dark:bg-amber-400/10', border: 'border-amber-300/50 dark:border-amber-300/40' },
-                } as const;
-                const config = rankConfig[rank as keyof typeof rankConfig] || { color: 'text-primary', bg: '', border: '' };
-                
+                const config = MEDALS[rank as 1 | 2 | 3];
+                const isTied =
+                  records[index - 1]?.score === record.score ||
+                  records[index + 1]?.score === record.score;
+                const editable = Boolean(isAdmin && record.discordId);
+
                 return (
-                  <TableRow 
+                  <TableRow
                     key={`${record.nickname}-${record.date}`}
                     className={`transition-colors ${
-                      isAdmin && record.discordId 
-                        ? 'cursor-pointer hover:bg-primary/10 active:bg-primary/20' 
+                      editable
+                        ? 'cursor-pointer hover:bg-primary/10 active:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
                         : 'hover:bg-secondary/40'
-                    } ${isTopThree ? config.bg : ''} ${isTopThree ? config.border : ''} ${isTopThree ? 'border-l-4' : ''}`}
+                    } ${config ? `${config.bg} border-l-4 ${config.border}` : ''}`}
                     onClick={() => handleRowClick(record)}
-                    title={isAdmin && record.discordId ? '클릭하여 닉네임/점수 변경' : ''}
+                    onKeyDown={(event) => {
+                      if (!editable) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleRowClick(record);
+                      }
+                    }}
+                    tabIndex={editable ? 0 : undefined}
+                    role={editable ? 'button' : undefined}
+                    aria-label={editable ? `${record.nickname} 기록 수정` : undefined}
                   >
-                    <TableCell className={`font-semibold text-center ${config.color} text-sm`}>
-                      {rank}
+                    <TableCell className={`text-center text-sm font-semibold ${config ? config.color : 'text-muted-foreground'}`}>
+                      <span className="inline-flex items-center gap-1">
+                        {rank}
+                        {isTied && (
+                          <span className="text-[10px] font-medium text-muted-foreground" title="같은 점수는 먼저 달성한 기록이 앞섭니다">
+                            =
+                          </span>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="font-medium max-w-[140px] sm:max-w-none text-foreground">
                       <div className="flex items-center gap-2 min-w-0">
@@ -314,7 +337,9 @@ export const RankingList = memo(function RankingList({
                       {record.score.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground text-xs hidden sm:table-cell">
-                      {formatDate(record.date)}
+                      <time dateTime={record.date} title={formatFullDate(record.date)}>
+                        {formatDate(record.date)}
+                      </time>
                     </TableCell>
                   </TableRow>
                 );
