@@ -1,5 +1,5 @@
 import DiscordProvider from 'next-auth/providers/discord';
-import { checkGuildMembership, getGuildMember, getDisplayName, getMemberAvatarUrl, checkAcademicVerification } from '@/lib/discord-api';
+import { checkGuildMembership, getGuildMember, getDisplayName, getMemberAvatarUrl, isAcademicVerifiedMember } from '@/lib/discord-api';
 import { SessionUser, DiscordProfile } from '@/types/auth';
 import { validateEnv } from '@/lib/env';
 import { logger } from '@/lib/logger';
@@ -17,8 +17,10 @@ try {
 
 const env = validateEnv();
 
-// 에러 타입을 저장할 임시 저장소 (메모리 기반, 프로덕션에서는 Redis 등 사용 권장)
-const authErrorStore = new Map<string, string>();
+/** 로그인 차단 사유를 요청 본인에게만 전달하도록 리다이렉트 URL로 실어 보낸다. */
+function accessDeniedUrl(errorType: 'NOT_MEMBER' | 'NOT_VERIFIED' | 'TEMPORARY_ERROR'): string {
+  return `/?error=AccessDenied&errorType=${errorType}`;
+}
 
 export const authOptions = {
   providers: [
@@ -32,56 +34,40 @@ export const authOptions = {
       },
     }),
   ],
-  events: {
-    async signIn(message: { user: any; account?: any; profile?: any }) {
-      // 로그인 성공 시 에러 저장소에서 해당 사용자 정보 제거
-      const { user, account, profile } = message;
-      
-      if (user && (user as any).discordId) {
-        authErrorStore.delete((user as any).discordId);
-      }
-      // account나 profile이 있는 경우 discordId 추출
-      if (account && profile && (profile as DiscordProfile).id) {
-        const discordId = (profile as DiscordProfile).id;
-        authErrorStore.delete(discordId);
-      }
-    },
-  },
   callbacks: {
     async signIn(params: any) {
       const { user, account, profile } = params;
-      
+
       if (!account || !profile) {
         return false;
       }
 
       // Discord 사용자 ID 가져오기
       const discordId = (profile as DiscordProfile).id;
-      
-      // 서버 멤버십 확인
-      const isMember = await checkGuildMembership(discordId);
-      
+
+      let member;
+      try {
+        member = await getGuildMember(discordId);
+      } catch (error) {
+        // Discord가 일시적으로 응답하지 못한 것을 미가입으로 단정하면 안 된다.
+        logger.error('로그인 중 서버 멤버십 확인 실패:', error);
+        return accessDeniedUrl('TEMPORARY_ERROR');
+      }
+
       // 서버에 가입하지 않은 경우 로그인 차단
-      if (!isMember) {
-        // 에러 타입을 임시 저장소에 저장 (API 라우트에서 접근 가능하도록)
-        authErrorStore.set(discordId, 'NOT_MEMBER');
-        return false;
+      if (!member) {
+        return accessDeniedUrl('NOT_MEMBER');
       }
-      
-      // 학적 인증 역할 확인
-      const isVerified = await checkAcademicVerification(discordId);
-      
+
       // 학적 인증 역할이 없는 경우 로그인 차단
-      if (!isVerified) {
-        // 에러 타입을 임시 저장소에 저장 (API 라우트에서 접근 가능하도록)
-        authErrorStore.set(discordId, 'NOT_VERIFIED');
-        return false;
+      if (!isAcademicVerifiedMember(member)) {
+        return accessDeniedUrl('NOT_VERIFIED');
       }
-      
+
       // 세션에 멤버십 정보 저장
-      user.isMember = isMember;
+      user.isMember = true;
       user.discordId = discordId;
-      user.isVerified = isVerified;
+      user.isVerified = true;
 
       return true;
     },
@@ -133,23 +119,26 @@ export const authOptions = {
         token.isMember = isMember;
         token.isVerified = isVerified;
       } else if (token.discordId && trigger === 'update') {
-        // 세션 업데이트 시 (사용자가 명시적으로 update() 호출)
-        // 학적 인증 상태를 재확인
+        // 사용자가 update()를 호출했을 때 멤버십과 학적 인증을 재확인한다.
         const discordId = token.discordId as string;
-        const isMember = await checkGuildMembership(discordId);
-        const isVerified = isMember ? await checkAcademicVerification(discordId) : false;
-        
-        token.isMember = isMember;
-        token.isVerified = isVerified;
-        
-        // 멤버 정보도 업데이트 (닉네임, 아바타 변경 가능성 대비)
-        if (isMember) {
+
+        try {
           const member = await getGuildMember(discordId);
+          token.isMember = Boolean(member);
+          token.isVerified = isAcademicVerifiedMember(member);
+
           if (member) {
-            // 서버 닉네임이 변경되었을 수 있으므로 업데이트
-            // 하지만 기존 displayName을 유지하는 것이 더 안전할 수 있음
-            // 필요시 여기서 업데이트 가능
+            token.name = getDisplayName(member, {
+              id: discordId,
+              username: (token.name as string) || discordId,
+              discriminator: '0',
+              avatar: null,
+              global_name: null,
+            });
           }
+        } catch (error) {
+          // 재확인 실패 시 기존 플래그를 유지한다. 쓰기 경로는 서버에서 다시 검사한다.
+          logger.error('세션 갱신 중 멤버십 확인 실패:', error);
         }
       }
 
@@ -172,13 +161,15 @@ export const authOptions = {
   pages: {
     signIn: '/',
   },
+  session: {
+    strategy: 'jwt' as const,
+    // 강퇴나 역할 회수가 반영되기까지의 최대 지연이기도 하다.
+    maxAge: 24 * 60 * 60,
+  },
   secret: env.NEXTAUTH_SECRET,
   // 개발 환경에서 localhost를 신뢰할 수 있는 호스트로 설정
   trustHost: true,
   // NextAuth 로깅 설정 (개발 환경에서만 디버그 로그 표시)
   debug: process.env.NODE_ENV === 'development',
 };
-
-// 에러 저장소를 외부에서 접근 가능하도록 export
-export { authErrorStore };
 

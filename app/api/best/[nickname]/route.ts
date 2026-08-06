@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRecords } from '@/lib/api-utils';
+import { getSession } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 // Next 16(Turbopack)에서는 동적 app route의 params가 Promise로 전달됩니다.
@@ -9,6 +10,15 @@ export async function GET(
   { params }: { params: Promise<{ nickname: string }> }
 ) {
   try {
+    // 자기 기록 조회용 엔드포인트다. 무인증이면 임의 Discord ID로 열거가 된다.
+    const session = await getSession();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: '로그인이 필요합니다.' },
+        { status: 401 }
+      );
+    }
+
     const { nickname } = await params;
     const records = await getRecords();
 

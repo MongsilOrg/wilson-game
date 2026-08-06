@@ -6,32 +6,63 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10';
 const GUILD_ID = getEnv('DISCORD_GUILD_ID') || '1129730102633189376';
 const BOT_TOKEN = getEnv('DISCORD_BOT_TOKEN');
 
+// 학적 인증으로 인정하는 역할. 서버에서 역할을 새로 파면 env로 덮어쓴다.
+const VERIFIED_ROLE_IDS = (
+  process.env.DISCORD_VERIFIED_ROLE_IDS ||
+  '1406632649686253649,1406620470307979344,1129731819198222417'
+)
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
+
 if (!BOT_TOKEN) {
   logger.warn('DISCORD_BOT_TOKEN이 설정되지 않았습니다. 서버 멤버십 확인이 작동하지 않을 수 있습니다.');
 }
 
 /**
+ * Discord API가 일시적으로 응답하지 못한 상태. 404(미가입)와 구분해야
+ * 정상 멤버에게 "서버에 가입하세요" 안내가 잘못 뜨는 것을 막을 수 있다.
+ */
+export class DiscordUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'DiscordUnavailableError';
+  }
+}
+
+/**
  * Discord API 호출 헬퍼
+ * @returns 404면 null, 성공이면 JSON
+ * @throws {DiscordUnavailableError} 그 외 실패
  */
 async function discordApiRequest(endpoint: string, options: RequestInit = {}) {
   if (!BOT_TOKEN) {
-    throw new Error('DISCORD_BOT_TOKEN이 설정되지 않았습니다.');
+    throw new DiscordUnavailableError('DISCORD_BOT_TOKEN이 설정되지 않았습니다.');
   }
 
-  const response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bot ${BOT_TOKEN}`,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${DISCORD_API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bot ${BOT_TOKEN}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    logger.error('Discord API 요청 실패:', error);
+    throw new DiscordUnavailableError('Discord API에 연결할 수 없습니다.', { cause: error });
+  }
+
+  if (response.status === 404) {
+    return null;
+  }
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    const errorMessage = `Discord API 오류: ${response.status} ${errorText}`;
-    logger.error(errorMessage);
-    throw new Error(errorMessage);
+    // 응답 본문에 내부 정보가 섞일 수 있어 상태 코드만 남긴다.
+    logger.error(`Discord API 오류: ${response.status}`);
+    throw new DiscordUnavailableError(`Discord API 오류: ${response.status}`);
   }
 
   return response.json();
@@ -60,42 +91,17 @@ export async function getDiscordUser(accessToken: string): Promise<DiscordUser> 
  * 서버 멤버십 확인 (봇 토큰 사용)
  */
 export async function checkGuildMembership(userId: string): Promise<boolean> {
-  if (!BOT_TOKEN) {
-    return false;
-  }
-
-  try {
-    const member = await discordApiRequest(`/guilds/${GUILD_ID}/members/${userId}`) as DiscordGuildMember | null;
-    return member !== null && member !== undefined;
-  } catch (error) {
-    // 404는 멤버가 아니라는 의미
-    if (error instanceof Error && error.message.includes('404')) {
-      return false;
-    }
-    logger.error('서버 멤버십 확인 오류:', error);
-    return false;
-  }
+  const member = await getGuildMember(userId);
+  return member !== null;
 }
 
 /**
  * 서버 멤버 정보 가져오기 (닉네임, 아바타 포함)
  */
 export async function getGuildMember(userId: string): Promise<DiscordGuildMember | null> {
-  if (!BOT_TOKEN) {
-    return null;
-  }
-
-  try {
-    const member = await discordApiRequest(`/guilds/${GUILD_ID}/members/${userId}`) as DiscordGuildMember;
-    return member;
-  } catch (error) {
-    // 404는 멤버가 아니라는 의미
-    if (error instanceof Error && error.message.includes('404')) {
-      return null;
-    }
-    logger.error('서버 멤버 정보 가져오기 오류:', error);
-    return null;
-  }
+  return await discordApiRequest(
+    `/guilds/${GUILD_ID}/members/${encodeURIComponent(userId)}`
+  ) as DiscordGuildMember | null;
 }
 
 /**
@@ -137,28 +143,24 @@ export function getMemberAvatarUrl(member: DiscordGuildMember | null, user: Disc
 }
 
 /**
- * 학적 인증 확인 (특정 역할 ID 보유 여부 확인)
- * 역할 ID 1406632649686253649, 1406620470307979344, 또는 1129731819198222417 중 하나를 가지고 있으면 인증된 것으로 간주
+ * 이미 조회한 멤버 객체로 학적 인증 여부 판정 (추가 API 호출 없음)
+ */
+export function isAcademicVerifiedMember(member: DiscordGuildMember | null): boolean {
+  if (!member || !Array.isArray(member.roles)) {
+    return false;
+  }
+  return member.roles.some((roleId) => VERIFIED_ROLE_IDS.includes(roleId));
+}
+
+/**
+ * 학적 인증 확인 (특정 역할 보유 여부 확인)
  */
 export async function checkAcademicVerification(userId: string): Promise<boolean> {
   if (!BOT_TOKEN) {
     return false;
   }
 
-  try {
-    const member = await getGuildMember(userId);
-    if (!member || !member.roles || !Array.isArray(member.roles)) {
-      return false;
-    }
-
-    // 학적 인증 역할 ID
-    const verifiedRoleIds = ['1406632649686253649', '1406620470307979344', '1129731819198222417'];
-    
-    // 멤버가 가진 역할 중 하나라도 학적 인증 역할이면 true
-    return member.roles.some(roleId => verifiedRoleIds.includes(roleId));
-  } catch (error) {
-    logger.error('학적 인증 확인 오류:', error);
-    return false;
-  }
+  const member = await getGuildMember(userId);
+  return isAcademicVerifiedMember(member);
 }
 
