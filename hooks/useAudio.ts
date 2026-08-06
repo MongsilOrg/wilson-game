@@ -1,63 +1,64 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { logger } from '@/lib/logger';
+import { useIsClient } from '@/hooks/useIsClient';
 
 const VOLUME_STORAGE_KEY = 'wilson-game-volume';
+const VOLUME_CHANGE_EVENT = 'wilson-game-volume-change';
+const DEFAULT_VOLUME = 0.1;
 
-function getStoredVolume(): number {
-  if (typeof window === 'undefined') return 0.1;
-  
-  // 1. data-volume attribute를 우선 확인 (초기 스크립트가 설정한 값)
-  const dataVolume = document.documentElement.getAttribute('data-volume');
-  if (dataVolume !== null) {
-    const volume = parseFloat(dataVolume);
-    if (!isNaN(volume) && volume >= 0 && volume <= 1) {
-      return volume;
-    }
-  }
-  
-  // 2. localStorage 확인
+function parseVolume(value: string | null): number | null {
+  if (value === null) return null;
+  const volume = parseFloat(value);
+  return !isNaN(volume) && volume >= 0 && volume <= 1 ? volume : null;
+}
+
+/**
+ * 현재 볼륨을 DOM과 localStorage에서 읽는다.
+ * 하이드레이션 전에 실행되는 인라인 스크립트가 data-volume을 채워 둔다.
+ */
+function getSnapshot(): number {
+  const fromDom = parseVolume(document.documentElement.getAttribute('data-volume'));
+  if (fromDom !== null) return fromDom;
+
   try {
-    const stored = localStorage.getItem(VOLUME_STORAGE_KEY);
-    if (stored !== null) {
-      const volume = parseFloat(stored);
-      if (!isNaN(volume) && volume >= 0 && volume <= 1) {
-        return volume;
-      }
-    }
+    const fromStorage = parseVolume(localStorage.getItem(VOLUME_STORAGE_KEY));
+    if (fromStorage !== null) return fromStorage;
   } catch (error) {
     logger.error('Failed to load volume from localStorage:', error);
   }
-  
-  return 0.1;
+
+  return DEFAULT_VOLUME;
+}
+
+function getServerSnapshot(): number {
+  return DEFAULT_VOLUME;
+}
+
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(VOLUME_CHANGE_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(VOLUME_CHANGE_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
 }
 
 export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = false) {
   const [isPlaying, setIsPlaying] = useState(false);
-  // 서버와 클라이언트가 동일하게 렌더링되도록 초기값은 항상 0.1
-  // 실제 볼륨은 useEffect에서 설정하여 Hydration 오류 방지
-  const [volume, setVolume] = useState(0.1);
-  const [mounted, setMounted] = useState(false);
+  const volume = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const mounted = useIsClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // 마운트 후 한 번만 실행하여 상태 동기화 및 data attribute 업데이트
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const currentVolume = getStoredVolume();
-      setVolume(currentVolume);
-      // 초기 스크립트가 이미 적용했지만, 확실히 하기 위해 다시 적용
-      // data attribute도 업데이트 (일관성 유지)
-      document.documentElement.setAttribute('data-volume', currentVolume.toString());
-      setMounted(true);
-    }
-  }, []);
 
   // volume을 의존성에 넣으면 볼륨을 움직일 때마다 오디오가 새로 생성되어 재생이 끊긴다.
   const volumeRef = useRef(volume);
 
   useEffect(() => {
     volumeRef.current = volume;
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
   }, [volume]);
 
   useEffect(() => {
@@ -94,13 +95,6 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
     };
   }, [src, loop, autoPlay]);
 
-  // 볼륨 변경 시 오디오에 적용
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
   const play = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.play().then(() => {
@@ -127,16 +121,13 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
   }, [isPlaying, play, pause]);
 
   const handleVolumeChange = useCallback((newVolume: number) => {
-    setVolume(newVolume);
-    // data attribute도 업데이트
-    if (typeof window !== 'undefined') {
-      document.documentElement.setAttribute('data-volume', newVolume.toString());
-    }
+    document.documentElement.setAttribute('data-volume', newVolume.toString());
     try {
       localStorage.setItem(VOLUME_STORAGE_KEY, newVolume.toString());
     } catch (error) {
       logger.error('Failed to save volume to localStorage:', error);
     }
+    window.dispatchEvent(new Event(VOLUME_CHANGE_EVENT));
   }, []);
 
   return {
@@ -149,4 +140,3 @@ export function useAudio(src: string, loop: boolean = true, autoPlay: boolean = 
     toggle,
   };
 }
-

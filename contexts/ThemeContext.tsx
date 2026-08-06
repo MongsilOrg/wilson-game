@@ -1,11 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useCallback, useSyncExternalStore, ReactNode } from 'react';
 import { logger } from '@/lib/logger';
+import { useIsClient } from '@/hooks/useIsClient';
 
 type Theme = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'wilson-game-theme';
+const THEME_CHANGE_EVENT = 'wilson-game-theme-change';
 
 interface ThemeContextType {
   theme: Theme;
@@ -16,110 +18,82 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-function applyTheme(newTheme: Theme) {
-  if (typeof window === 'undefined') return;
-  
-  const root = document.documentElement;
-  if (newTheme === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
+function readStoredTheme(): Theme | null {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    return stored === 'light' || stored === 'dark' ? stored : null;
+  } catch {
+    return null;
   }
 }
 
-// 초기 테마를 동기적으로 읽는 함수 (초기 스크립트가 실행된 후)
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light';
-  
-  // 1. data-theme attribute를 우선 확인 (초기 스크립트가 설정한 값)
-  const dataTheme = document.documentElement.getAttribute('data-theme');
+/**
+ * 현재 테마를 DOM에서 읽는다. 하이드레이션 전에 실행되는 인라인 스크립트가
+ * 이미 값을 적용해 두므로 DOM이 사실상의 저장소다.
+ */
+function getSnapshot(): Theme {
+  const root = document.documentElement;
+
+  const dataTheme = root.getAttribute('data-theme');
   if (dataTheme === 'dark' || dataTheme === 'light') {
     return dataTheme;
   }
-  
-  // 2. html 태그의 클래스 확인 (초기 스크립트가 설정한 값)
-  const hasDarkClass = document.documentElement.classList.contains('dark');
-  if (hasDarkClass) return 'dark';
-  
-  // 3. localStorage 확인 (초기 스크립트와 동일한 로직)
-  try {
-    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
-      return storedTheme;
-    }
-  } catch (e) {
-    // localStorage 접근 실패 시 무시
-  }
-  
-  // 4. 시스템 테마 감지
+
+  if (root.classList.contains('dark')) return 'dark';
+
+  const stored = readStoredTheme();
+  if (stored) return stored;
+
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+function getServerSnapshot(): Theme {
+  return 'light';
+}
+
+function applyTheme(newTheme: Theme) {
+  const root = document.documentElement;
+  root.classList.toggle('dark', newTheme === 'dark');
+  root.setAttribute('data-theme', newTheme);
+  window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+}
+
+function subscribe(onChange: () => void): () => void {
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  const handleSystemChange = () => {
+    // 사용자가 직접 고른 테마가 있으면 시스템 설정에 따라 바꾸지 않는다.
+    if (readStoredTheme()) return;
+    applyTheme(mediaQuery.matches ? 'dark' : 'light');
+  };
+
+  mediaQuery.addEventListener('change', handleSystemChange);
+  window.addEventListener(THEME_CHANGE_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+
+  return () => {
+    mediaQuery.removeEventListener('change', handleSystemChange);
+    window.removeEventListener(THEME_CHANGE_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // 서버와 클라이언트가 동일하게 렌더링되도록 초기값은 항상 'light'
-  // 실제 테마는 useEffect에서 설정하여 Hydration 오류 방지
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
-
-  // 마운트 후 한 번만 실행하여 상태 동기화 및 data attribute 업데이트
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const currentTheme = getInitialTheme();
-    setThemeState(currentTheme);
-    // 초기 스크립트가 이미 적용했지만, 확실히 하기 위해 다시 적용
-    applyTheme(currentTheme);
-    // data attribute도 업데이트 (일관성 유지)
-    document.documentElement.setAttribute('data-theme', currentTheme);
-    setMounted(true);
-  }, []);
-
-  // 시스템 테마 변경 감지 (localStorage에 저장된 테마가 없을 때만)
-  useEffect(() => {
-    if (typeof window === 'undefined' || !mounted) return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-    
-    // localStorage에 저장된 테마가 없을 때만 시스템 테마 변경 감지
-    if (!storedTheme) {
-      const handleChange = (e: MediaQueryListEvent) => {
-        const newTheme = e.matches ? 'dark' : 'light';
-        setThemeState(newTheme);
-        applyTheme(newTheme);
-      };
-
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-  }, [mounted]);
-
-  const toggleTheme = useCallback(() => {
-    setThemeState((prevTheme) => {
-      const newTheme: Theme = prevTheme === 'light' ? 'dark' : 'light';
-      applyTheme(newTheme);
-      // data attribute도 업데이트
-      if (typeof window !== 'undefined') {
-        document.documentElement.setAttribute('data-theme', newTheme);
-      }
-      try {
-        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      } catch (error) {
-        logger.error('Failed to save theme:', error);
-      }
-      return newTheme;
-    });
-  }, []);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const mounted = useIsClient();
 
   const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
     applyTheme(newTheme);
-    // data attribute도 업데이트
-    if (typeof window !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    } catch (error) {
+      logger.error('Failed to save theme:', error);
     }
-    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
   }, []);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(getSnapshot() === 'light' ? 'dark' : 'light');
+  }, [setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, mounted, toggleTheme, setTheme }}>
@@ -135,4 +109,3 @@ export function useTheme() {
   }
   return context;
 }
-

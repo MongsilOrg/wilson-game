@@ -1,5 +1,5 @@
 import { GameRecord } from '@/types/game';
-import { get, put, BlobNotFoundError, BlobPreconditionFailedError } from '@vercel/blob';
+import { get, put, del, BlobNotFoundError, BlobPreconditionFailedError } from '@vercel/blob';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '@/lib/logger';
@@ -17,8 +17,13 @@ const DATA_DIR = path.dirname(DATA_FILE);
 const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const isVercel = process.env.VERCEL === '1';
 
-// 이미 public으로 저장된 객체가 있어 그대로 둔다. private 전환은 별도 마이그레이션이 필요하다.
-const BLOB_ACCESS = 'public' as const;
+// 기록에는 참가자 전원의 discordId가 들어 있다. private으로 둬야 하고,
+// useCache: false로 원본을 직접 읽는 것도 private일 때만 동작한다(공개 객체는 CDN 캐시를 탄다).
+const BLOB_ACCESS = 'private' as const;
+
+// public과 private은 호스트가 달라 기존 객체가 자동으로 옮겨지지 않는다.
+// 처음 읽을 때 public에 남은 기록을 가져오고, private으로 쓴 뒤 지운다.
+const LEGACY_BLOB_ACCESS = 'public' as const;
 
 const MAX_WRITE_ATTEMPTS = 5;
 
@@ -37,6 +42,8 @@ export class RecordStoreError extends Error {
 interface RecordSnapshot {
   records: GameRecord[];
   etag: string | null;
+  /** public에 남아 있던 기록을 읽어온 경우의 원본 URL */
+  legacyUrl?: string;
 }
 
 async function ensureDataFile() {
@@ -55,31 +62,45 @@ function toRecordArray(maybeRecords: unknown): GameRecord[] {
   throw new RecordStoreError('기록 파일이 배열이 아닙니다.');
 }
 
+async function readBlob(access: 'public' | 'private') {
+  try {
+    // 엣지 캐시가 직전 스냅샷을 돌려주면 그 위에 덮어써 기록이 사라진다.
+    return await get(BLOB_PATH, { access, useCache: false });
+  } catch (error) {
+    if (error instanceof BlobNotFoundError) {
+      return null;
+    }
+    throw new RecordStoreError(`Blob 읽기 실패 (${access})`, { cause: error });
+  }
+}
+
+async function parseBlob(stream: ReadableStream<Uint8Array>): Promise<GameRecord[]> {
+  try {
+    return toRecordArray(JSON.parse(await new Response(stream).text()));
+  } catch (error) {
+    if (error instanceof RecordStoreError) throw error;
+    throw new RecordStoreError('Blob 본문 파싱 실패', { cause: error });
+  }
+}
+
 async function readSnapshot(): Promise<RecordSnapshot> {
   if (hasBlobToken) {
-    let result;
-    try {
-      // 엣지 캐시가 직전 스냅샷을 돌려주면 그 위에 덮어써 기록이 사라진다.
-      result = await get(BLOB_PATH, { access: BLOB_ACCESS, useCache: false });
-    } catch (error) {
-      if (error instanceof BlobNotFoundError) {
-        return { records: [], etag: null };
-      }
-      throw new RecordStoreError('Blob 읽기 실패', { cause: error });
+    const result = await readBlob(BLOB_ACCESS);
+
+    if (result?.statusCode === 200 && result.stream) {
+      return { records: await parseBlob(result.stream), etag: result.blob.etag };
+    }
+
+    const legacy = await readBlob(LEGACY_BLOB_ACCESS);
+
+    if (legacy?.statusCode === 200 && legacy.stream) {
+      logger.warn('public에 남은 기록을 읽었습니다. private으로 옮깁니다.');
+      // etag는 private 객체 기준이라야 하므로 여기서는 조건 없이 쓴다.
+      return { records: await parseBlob(legacy.stream), etag: null, legacyUrl: legacy.blob.url };
     }
 
     // 아직 한 번도 저장한 적 없는 상태
-    if (!result || result.statusCode !== 200 || !result.stream) {
-      return { records: [], etag: null };
-    }
-
-    try {
-      const text = await new Response(result.stream).text();
-      return { records: toRecordArray(JSON.parse(text)), etag: result.blob.etag };
-    } catch (error) {
-      if (error instanceof RecordStoreError) throw error;
-      throw new RecordStoreError('Blob 본문 파싱 실패', { cause: error });
-    }
+    return { records: [], etag: null };
   }
 
   if (isVercel) {
@@ -99,15 +120,25 @@ async function readSnapshot(): Promise<RecordSnapshot> {
 /**
  * @throws {BlobPreconditionFailedError} 읽은 뒤 다른 요청이 먼저 쓴 경우
  */
-async function writeSnapshot(records: GameRecord[], etag: string | null): Promise<void> {
+async function writeSnapshot(records: GameRecord[], snapshot: RecordSnapshot): Promise<void> {
   if (hasBlobToken) {
     await put(BLOB_PATH, JSON.stringify(records, null, 2), {
       addRandomSuffix: false,
       access: BLOB_ACCESS,
       contentType: 'application/json',
       allowOverwrite: true,
-      ...(etag ? { ifMatch: etag } : {}),
+      ...(snapshot.etag ? { ifMatch: snapshot.etag } : {}),
     });
+
+    if (snapshot.legacyUrl) {
+      try {
+        await del(snapshot.legacyUrl);
+        logger.warn('public에 남아 있던 기록을 삭제했습니다.');
+      } catch (error) {
+        // 옮기는 것까지는 끝났으므로 삭제 실패로 요청을 실패시키지 않는다.
+        logger.error('public 기록 삭제 실패:', error);
+      }
+    }
     return;
   }
 
@@ -180,7 +211,7 @@ export async function mutateRecords<T>(
     }
 
     try {
-      await writeSnapshot(records, snapshot.etag);
+      await writeSnapshot(records, snapshot);
       return result;
     } catch (error) {
       if (error instanceof BlobPreconditionFailedError && attempt < MAX_WRITE_ATTEMPTS) {

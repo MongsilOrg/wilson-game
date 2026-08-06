@@ -1,17 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useIsClient } from '@/hooks/useIsClient';
 
 export function ThemeToggle() {
   const { theme, toggleTheme, mounted } = useTheme();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
 
   const handleClick = () => {
     toggleTheme();

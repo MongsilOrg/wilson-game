@@ -265,12 +265,6 @@ export function useGame() {
    * - 현재 게임 루프/입력을 정리하고, startGame 로직을 재사용하여 깨끗하게 다시 시작
    */
   const restartGame = useCallback(() => {
-    // 애니메이션 루프 정리
-    if (animationIdRef.current) {
-      cancelAnimationFrame(animationIdRef.current);
-      animationIdRef.current = null;
-    }
-
     // 타이머 정리
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -296,14 +290,6 @@ export function useGame() {
     // 잠시 waiting 상태로 돌린 뒤, 동일한 startGame 로직으로 다시 시작
     setGameState('waiting');
     startGame(playerNickname);
-
-    // 재시작 시에도 메인 게임 루프가 다시 돌도록 보장
-    if (!animationIdRef.current) {
-      animationIdRef.current = requestAnimationFrame((time) => {
-        lastFrameTimeRef.current = time;
-        gameLoopRef.current?.(time);
-      });
-    }
   }, [startGame, playerNickname]);
 
   /**
@@ -384,34 +370,8 @@ export function useGame() {
     }
   }, [gameState, removingFruits, cellSize]);
 
-  // 게임 루프를 ref로 관리
-  const gameLoopRef = useRef<((currentTime?: number) => void) | undefined>(undefined);
-  const lastFrameTimeRef = useRef<number>(0);
   const targetFPS = 60;
   const frameInterval = 1000 / targetFPS;
-
-  // 게임 루프 함수 업데이트
-  useEffect(() => {
-    gameLoopRef.current = (currentTime: number = performance.now()) => {
-      const elapsed = currentTime - lastFrameTimeRef.current;
-      
-      if (elapsed >= frameInterval) {
-        lastFrameTimeRef.current = currentTime - (elapsed % frameInterval);
-        
-        if (gameState === 'playing') {
-          updateAnimations();
-        }
-        
-        draw();
-      }
-      
-      if (gameState === 'playing' || gameState === 'waiting' || gameState === 'gameOver') {
-        animationIdRef.current = requestAnimationFrame((time) => {
-          gameLoopRef.current?.(time);
-        });
-      }
-    };
-  }, [gameState, draw, updateAnimations, frameInterval]);
 
   // gameState 변화 시 초기 그리기
   useEffect(() => {
@@ -448,20 +408,35 @@ export function useGame() {
     checkAndInit();
   }, [setupCanvas]);
 
-  // 게임 루프 시작
+  // 게임 루프. 이 effect가 rAF를 단독으로 소유해 루프가 겹치지 않는다.
   useEffect(() => {
-    const loop = () => {
-      gameLoopRef.current?.();
+    let lastFrameTime = performance.now();
+
+    const loop = (currentTime: number) => {
+      const elapsed = currentTime - lastFrameTime;
+
+      if (elapsed >= frameInterval) {
+        lastFrameTime = currentTime - (elapsed % frameInterval);
+
+        if (gameState === 'playing') {
+          updateAnimations();
+        }
+
+        draw();
+      }
+
+      animationIdRef.current = requestAnimationFrame(loop);
     };
-    
+
     animationIdRef.current = requestAnimationFrame(loop);
-    
+
     return () => {
       if (animationIdRef.current) {
         cancelAnimationFrame(animationIdRef.current);
+        animationIdRef.current = null;
       }
     };
-  }, []);
+  }, [gameState, draw, updateAnimations, frameInterval]);
 
   // 윈도우 리사이즈 처리
   useEffect(() => {

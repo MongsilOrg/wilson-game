@@ -1,20 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAudio } from '@/hooks/useAudio';
 import { useGameContext } from '@/contexts/GameContext';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Volume2, VolumeX } from 'lucide-react';
+import { useIsClient } from '@/hooks/useIsClient';
 
 export function AudioControl() {
   const { gameState } = useGameContext();
   const { isPlaying, volume, mounted, setVolume, toggle, play, pause } = useAudio('/background-music.mp3', true, false);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const isClient = useIsClient();
 
   // 게임 상태에 따라 자동 재생/정지
   useEffect(() => {
