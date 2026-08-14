@@ -1,4 +1,5 @@
 import { DefaultSession } from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
 
 export interface DiscordUser {
   id: string;
@@ -46,7 +47,7 @@ declare module 'next-auth' {
   }
 }
 
-declare module 'next-auth/jwt' {
+declare module '@auth/core/jwt' {
   interface JWT {
     discordId?: string;
     isMember?: boolean;
