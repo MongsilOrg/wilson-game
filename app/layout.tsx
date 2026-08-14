@@ -1,15 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "@/styles/globals.css";
 import { GameProvider } from "@/contexts/GameContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SessionProvider } from "@/components/SessionProvider";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "윌슨게임",
@@ -59,9 +53,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${inter.className} min-h-screen text-foreground antialiased`}
-      >
+      {/* inter.className을 삭제하고 기존 Tailwind 클래스만 남겨둡니다 */}
+      <body className="min-h-screen text-foreground antialiased">
         <SessionProvider>
           <ThemeProvider>
             <GameProvider>
@@ -80,4 +73,3 @@ export default function RootLayout({
     </html>
   );
 }
-
