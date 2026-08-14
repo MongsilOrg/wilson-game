@@ -198,6 +198,8 @@ export async function getRecords(): Promise<GameRecord[]> {
  * 기록을 읽어 변형 함수를 적용한 뒤 저장한다.
  * 읽기가 실패하면 저장하지 않는다. 빈 배열로 덮어써 전체 기록이 사라지는 것을 막는다.
  * 저장 직전에 다른 요청이 먼저 썼으면 새로 읽어 다시 적용한다.
+ * 변형 함수가 받은 배열을 그대로 돌려주면 저장을 생략한다. put 횟수가 플랜 한도에
+ * 잡히므로, 변경이 없으면(점수 미갱신 등) 쓰지 않는 것이 요금과 충돌 양쪽에 낫다.
  */
 export async function mutateRecords<T>(
   mutator: (records: GameRecord[]) => { records: GameRecord[]; result: T }
@@ -208,6 +210,10 @@ export async function mutateRecords<T>(
 
     if (!Array.isArray(records)) {
       throw new RecordStoreError('변형 결과가 배열이 아닙니다.');
+    }
+
+    if (records === snapshot.records && !snapshot.legacyUrl) {
+      return result;
     }
 
     try {

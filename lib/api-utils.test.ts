@@ -97,6 +97,14 @@ describe('mutateRecords', () => {
     }
   });
 
+  it('받은 배열을 그대로 돌려주면 저장을 생략한다', async () => {
+    const raw = readStore();
+    const result = await mutateRecords((records) => ({ records, result: 'skip' }));
+    expect(result).toBe('skip');
+    // 저장했다면 들여쓰기 포맷으로 다시 써져 원본과 달라진다
+    expect(readStore()).toBe(raw);
+  });
+
   it('읽은 기록을 변형해 저장한다', async () => {
     const added = await mutateRecords((records) => ({
       records: [...records, { nickname: 'C', score: 10, date: '2026-02-01T00:00:00.000Z', discordId: '333' }],
