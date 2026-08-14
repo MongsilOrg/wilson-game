@@ -6,6 +6,8 @@ import { useSession } from '@/hooks/useSession';
 import { Button } from '@/components/ui/button';
 import { DiscordLoginButton } from '@/components/auth/DiscordLoginButton';
 
+const INVITE_URL = process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || 'https://discord.gg/EpBHHbQrMv';
+
 const RULES = [
   { value: '10', label: '드래그한 칸의 합이 10이면 지워집니다' },
   { value: '+1', label: '지운 윌슨 하나당 1점' },
@@ -61,7 +63,17 @@ export function BoardIntro() {
         ) : !isAuthenticated ? (
           <div className="space-y-2">
             <DiscordLoginButton />
-            <p className="text-xs text-muted-foreground">디스코드로 로그인하면 바로 시작할 수 있어요</p>
+            <p className="text-xs text-muted-foreground">
+              <a
+                href={INVITE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                루미아 캠퍼스
+              </a>
+              {' '}학부생 전용 게임이에요. 디스코드로 로그인해 주세요
+            </p>
           </div>
         ) : !isVerified ? (
           <p className="text-sm text-muted-foreground">학적 인증을 마치면 게임을 시작할 수 있어요</p>
