@@ -27,7 +27,7 @@ export interface DiscordGuildMember {
   roles?: string[];
 }
 
-export interface SessionUser extends DefaultSession['user'] {
+export interface SessionUser extends NonNullable<DefaultSession['user']> {
   id: string;
   discordId: string;
   isMember: boolean;
