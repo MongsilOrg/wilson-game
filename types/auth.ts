@@ -1,3 +1,5 @@
+import { DefaultSession } from 'next-auth';
+
 export interface DiscordUser {
   id: string;
   username: string;
@@ -9,12 +11,8 @@ export interface DiscordUser {
 /**
  * NextAuth Discord Provider의 profile 타입
  */
-export interface DiscordProfile {
-  id: string;
-  username: string;
-  discriminator: string;
-  avatar: string | null;
-  global_name: string | null;
+
+export interface DiscordProfile extends DiscordUser {
   verified?: boolean;
   email?: string;
   flags?: number;
@@ -29,10 +27,8 @@ export interface DiscordGuildMember {
   roles?: string[];
 }
 
-export interface SessionUser {
+export interface SessionUser extends DefaultSession['user'] {
   id: string;
-  name: string;
-  image: string | null;
   discordId: string;
   isMember: boolean;
   isVerified: boolean;
@@ -47,6 +43,14 @@ declare module 'next-auth' {
 
   interface Session {
     user: SessionUser;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    discordId?: string;
+    isMember?: boolean;
+    isVerified?: boolean;
   }
 }
 
