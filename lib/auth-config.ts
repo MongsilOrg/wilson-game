@@ -38,7 +38,7 @@ export const authConfig: NextAuthConfig = {
       if (!account || !profile) return false;
 
       // Discord 사용자 ID 가져오기
-      const discordId = (profile as DiscordProfile).id;
+      const discordId = (profile as unknown as DiscordProfile).id;
 
       let member;
       try {
@@ -66,7 +66,7 @@ export const authConfig: NextAuthConfig = {
 
       // 초기 로그인 시 (signIn에서 이미 검증 완료)
       if (account && profile) {
-        const discordProfile = profile as DiscordProfile;
+        const discordProfile = profile as unknown as DiscordProfile;
         const discordId = discordProfile.id;
         const username = discordProfile.username;
         const globalName = discordProfile.global_name ?? null;
@@ -145,5 +145,3 @@ export const authConfig: NextAuthConfig = {
    // NextAuth 로깅 설정 (개발 환경에서만 디버그 로그 표시)
   debug: process.env.NODE_ENV === 'development',
 };
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
