@@ -38,7 +38,6 @@ export function BoardIntro() {
               src={`/wilson/number_${n}.png`}
               alt=""
               className="h-14 w-14 sm:h-16 sm:w-16"
-              style={{ transform: `translateY(${i === 1 ? '-0.5rem' : '0'})` }}
             />
           ))}
         </div>
