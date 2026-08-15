@@ -7,7 +7,7 @@ import { SessionProvider } from "@/components/SessionProvider";
 
 export const metadata: Metadata = {
   title: "윌슨게임",
-  description: "윌슨게임입니다.",
+  description: "윌슨! 도와줘",
 };
 
 export default function RootLayout({

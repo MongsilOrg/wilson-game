@@ -9,7 +9,7 @@ import { DiscordLoginButton } from '@/components/auth/DiscordLoginButton';
 const INVITE_URL = process.env.NEXT_PUBLIC_DISCORD_INVITE_URL || 'https://discord.gg/EpBHHbQrMv';
 
 const RULES = [
-  { value: '10', label: '드래그한 칸의 합이 10이면 지워집니다' },
+  { value: '10', label: '드래그한 칸의 합이\n10이면 지워집니다' },
   { value: '+1', label: '지운 윌슨 하나당 1점' },
   { value: '2:00', label: '2분 안에 최대한 많이' },
 ];
@@ -51,7 +51,9 @@ export function BoardIntro() {
             className="rounded-xl border border-border/60 bg-card/70 px-4 py-3 text-left"
           >
             <dt className="text-xl font-bold tabular-nums text-foreground">{rule.value}</dt>
-            <dd className="mt-1 text-xs leading-relaxed text-muted-foreground">{rule.label}</dd>
+            <dd className="mt-1 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              {rule.label}
+            </dd>
           </div>
         ))}
       </dl>
