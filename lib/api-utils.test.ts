@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { dedupeAndSort, getRecords, mutateRecords, RecordStoreError } from '@/lib/api-utils';
+import { dedupeAndSort, getRecords, mutateRecords, normalizeEtag, RecordStoreError } from '@/lib/api-utils';
 import { GameRecord } from '@/types/game';
 
 const DATA_FILE = path.join(process.cwd(), 'data', 'records.json');
@@ -41,6 +41,16 @@ describe('dedupeAndSort', () => {
 
   it('limit으로 상위 N개만 돌려준다', () => {
     expect(dedupeAndSort(SEED, 1)).toHaveLength(1);
+  });
+});
+
+describe('normalizeEtag', () => {
+  it('약한 ETag의 W/ 접두사를 벗긴다', () => {
+    expect(normalizeEtag('W/"c946"')).toBe('"c946"');
+  });
+
+  it('강한 ETag는 그대로 둔다', () => {
+    expect(normalizeEtag('"c946"')).toBe('"c946"');
   });
 });
 

@@ -38,6 +38,14 @@ export class RecordStoreError extends Error {
   }
 }
 
+/**
+ * 본문이 압축 임계치(약 1KB)를 넘으면 get 응답의 ETag가 약한 형태(W/"…")로 내려온다.
+ * put의 ifMatch는 강 비교라 그대로 쓰면 항상 412가 나므로 접두사를 벗겨야 한다.
+ */
+export function normalizeEtag(etag: string): string {
+  return etag.startsWith('W/') ? etag.slice(2) : etag;
+}
+
 /** 읽은 시점의 버전. 쓸 때 이 값을 조건으로 걸어 다른 요청의 덮어쓰기를 막는다. */
 interface RecordSnapshot {
   records: GameRecord[];
@@ -88,7 +96,7 @@ async function readSnapshot(): Promise<RecordSnapshot> {
     const result = await readBlob(BLOB_ACCESS);
 
     if (result?.statusCode === 200 && result.stream) {
-      return { records: await parseBlob(result.stream), etag: result.blob.etag };
+      return { records: await parseBlob(result.stream), etag: normalizeEtag(result.blob.etag) };
     }
 
     const legacy = await readBlob(LEGACY_BLOB_ACCESS);
