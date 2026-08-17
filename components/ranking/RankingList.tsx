@@ -226,12 +226,13 @@ export const RankingList = memo(function RankingList({
     );
   }
 
-  // 랭킹에서 분 단위까지는 필요 없다. 전체 시각은 title로만 남긴다.
+  // date는 KST로 변환된 ISO라 UTC getter가 곧 KST 시각이다.
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const month = date.getUTCMonth() + 1;
     const day = date.getUTCDate();
-    return `${month}월 ${day}일`;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${month}월 ${day}일 ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
   };
 
   const formatFullDate = (dateString: string) => {
