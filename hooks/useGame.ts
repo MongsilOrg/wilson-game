@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Grid } from '@/lib/grid';
 import { FruitRenderer } from '@/lib/fruit-renderer';
 import { InputHandler } from '@/lib/input-handler';
-import { GameState, GameRecord, RemovingAnimation, GRID_WIDTH, GRID_HEIGHT } from '@/types/game';
+import { GameState, GameRecord, GRID_WIDTH, GRID_HEIGHT } from '@/types/game';
 import { includesCoord } from '@/lib/utils';
 import { readBoardPalette, BoardPalette } from '@/lib/board-palette';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -31,7 +31,6 @@ export function useGame() {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [cellSize, setCellSize] = useState(0);
-  const [removingFruits, setRemovingFruits] = useState<RemovingAnimation[]>([]);
   const [playerNickname, setPlayerNickname] = useState('');
 
   // 캔버스는 CSS를 못 쓰므로 테마가 바뀔 때마다 색을 다시 읽어 넘긴다.
@@ -105,26 +104,6 @@ export function useGame() {
     
     // 합이 10이면 제거 (빈 칸 제외)
     if (sum === 10 && coordsToRemove.length > 0) {
-      // 선택 영역의 중심 좌표 계산
-      let centerRow = 0;
-      let centerCol = 0;
-      for (const [row, col] of coordsToRemove) {
-        centerRow += row;
-        centerCol += col;
-      }
-      centerRow = Math.floor(centerRow / coordsToRemove.length);
-      centerCol = Math.floor(centerCol / coordsToRemove.length);
-      
-      // 제거 애니메이션 시작
-      const removingValues = coordsToRemove.map(
-        ([row, col]) => gridRef.current?.getValue(row, col) ?? 0
-      );
-      setRemovingFruits((prev: RemovingAnimation[]) => [...prev, {
-        coords: coordsToRemove,
-        values: removingValues,
-        progress: 0
-      }]);
-
       // 점수 증가 (제거한 사과 수만큼, 빈 칸 제외)
       setScore((prev: number) => prev + coordsToRemove.length);
 
@@ -206,7 +185,6 @@ export function useGame() {
     setPlayerNickname(nickname);
     setScore(0);
     setTimeLeft(120);
-    setRemovingFruits([]);
 
     // 캔버스가 준비될 때까지 재시도
     const tryInitialize = (attempts = 0) => {
@@ -288,9 +266,6 @@ export function useGame() {
       inputHandlerRef.current = null;
     }
 
-    // 선택/애니메이션 상태 초기화
-    setRemovingFruits([]);
-
     // 플레이어 닉네임이 없으면 다시 시작하지 않음
     if (!playerNickname) {
       setGameState('waiting');
@@ -301,24 +276,6 @@ export function useGame() {
     setGameState('waiting');
     startGame(playerNickname);
   }, [startGame, playerNickname]);
-
-  /**
-   * 애니메이션 업데이트
-   */
-  const updateAnimations = useCallback(() => {
-    if (removingFruits.length === 0) {
-      return;
-    }
-    
-    if (removingFruits.length > 0) {
-      setRemovingFruits((prev: RemovingAnimation[]) => {
-        const updated = prev
-          .map((anim: RemovingAnimation) => ({ ...anim, progress: anim.progress + 0.05 }))
-          .filter((anim: RemovingAnimation) => anim.progress < 1);
-        return updated;
-      });
-    }
-  }, [removingFruits.length]);
 
   /**
    * 화면 그리기
@@ -349,28 +306,6 @@ export function useGame() {
           fruitRendererRef.current.drawFruit(col, row, value, isSelected);
         }
       }
-
-      // 제거된 칸은 격자에 남아 있지 않으므로 애니메이션에서 따로 그린다.
-      for (const anim of removingFruits) {
-        const alpha = 1 - anim.progress;
-        const scale = 1 - anim.progress * 0.5;
-
-        anim.coords.forEach(([row, col], index) => {
-          const value = anim.values[index];
-          if (!value) return;
-
-          const centerX = col * cellSize + cellSize / 2;
-          const centerY = row * cellSize + cellSize / 2;
-
-          ctx.save();
-          ctx.globalAlpha = alpha;
-          ctx.translate(centerX, centerY);
-          ctx.scale(scale, scale);
-          ctx.translate(-centerX, -centerY);
-          fruitRendererRef.current!.drawFruit(col, row, value, false);
-          ctx.restore();
-        });
-      }
     }
 
     // 선택 영역 시각화 (합계 계산/오버레이 없이 영역만 표시)
@@ -378,7 +313,7 @@ export function useGame() {
     if (selectedArea) {
       fruitRendererRef.current.drawSelectionArea(selectedArea, cellSize);
     }
-  }, [gameState, removingFruits, cellSize]);
+  }, [gameState, cellSize]);
 
   const targetFPS = 60;
   const frameInterval = 1000 / targetFPS;
@@ -427,11 +362,6 @@ export function useGame() {
 
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
-
-        if (gameState === 'playing') {
-          updateAnimations();
-        }
-
         draw();
       }
 
@@ -446,7 +376,7 @@ export function useGame() {
         animationIdRef.current = null;
       }
     };
-  }, [gameState, draw, updateAnimations, frameInterval]);
+  }, [draw, frameInterval]);
 
   // 윈도우 리사이즈 처리
   useEffect(() => {
