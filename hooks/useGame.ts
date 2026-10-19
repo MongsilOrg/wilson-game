@@ -190,7 +190,7 @@ export function useGame() {
     const tryInitialize = (attempts = 0) => {
       if (attempts > 20) {
         logger.error('[startGame] Failed to initialize after 20 attempts');
-        alert('게임을 시작할 수 없습니다. 페이지를 새로고침해주세요.');
+        alert('게임을 시작할 수 없습니다.\n페이지를 새로고침해주세요.');
         setGameState('waiting');
         return;
       }

@@ -73,11 +73,13 @@ export function BoardIntro() {
               >
                 루미아 캠퍼스
               </a>
-              {' '}학부생 전용 게임이에요. 디스코드로 로그인해 주세요
+              {' '}학부생 전용 게임입니다.
+              <br />
+              디스코드로 로그인해 주세요
             </p>
           </div>
         ) : !isVerified ? (
-          <p className="text-sm text-muted-foreground">학적 인증을 마치면 게임을 시작할 수 있어요</p>
+          <p className="text-sm text-muted-foreground">학적 인증을 마치면 게임을 시작할 수 있습니다</p>
         ) : (
           <Button onClick={handleStart} size="lg" className="w-full min-h-[48px] text-base font-semibold">
             게임 시작

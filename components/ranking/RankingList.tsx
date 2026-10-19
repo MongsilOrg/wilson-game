@@ -202,7 +202,11 @@ export const RankingList = memo(function RankingList({
         </div>
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
-          랭킹을 불러오는데 실패했습니다. 잠시 후 다시 시도해주세요.
+          <span>
+            랭킹을 불러오는데 실패했습니다.
+            <br />
+            잠시 후 다시 시도해주세요.
+          </span>
         </div>
       </div>
     );

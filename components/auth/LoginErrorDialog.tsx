@@ -3,6 +3,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Info, ExternalLink } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 type ErrorType = 'NOT_MEMBER' | 'NOT_VERIFIED' | 'TEMPORARY_ERROR';
 
@@ -14,7 +15,7 @@ interface LoginErrorDialogProps {
   errorType: ErrorType | null;
 }
 
-const CONTENT: Record<ErrorType, { title: string; description: string; details: string[]; link: string | null }> = {
+const CONTENT: Record<ErrorType, { title: string; description: ReactNode; details: string[]; link: string | null }> = {
   NOT_MEMBER: {
     title: '루미아 캠퍼스 서버 가입이 필요합니다',
     description: '윌슨게임을 이용하려면 루미아 캠퍼스 디스코드 서버에 가입하고 학적 인증을 완료해주세요.',
@@ -38,7 +39,13 @@ const CONTENT: Record<ErrorType, { title: string; description: string; details: 
   },
   TEMPORARY_ERROR: {
     title: '지금은 로그인할 수 없습니다',
-    description: '일시적인 문제로 로그인 확인에 실패했습니다. 가입이나 인증 상태와는 무관합니다.',
+    description: (
+      <>
+        일시적인 문제로 로그인 확인에 실패했습니다.
+        <br />
+        가입이나 인증 상태와는 무관합니다.
+      </>
+    ),
     details: [
       '잠시 후 다시 로그인을 시도해주세요.',
       '반복해서 실패하면 관리자에게 알려주세요.',
