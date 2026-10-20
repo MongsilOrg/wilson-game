@@ -325,7 +325,7 @@ export const RankingList = memo(function RankingList({
                             alt={record.nickname}
                             className="w-8 h-8 rounded-full flex-shrink-0"
                             onError={(e) => {
-                              // 이미지 로드 실패 시 기본 아바타로 대체
+                              // 이미지 로드 실패 시 이미지를 숨김
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
                             }}

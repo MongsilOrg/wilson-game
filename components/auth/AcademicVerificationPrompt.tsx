@@ -21,7 +21,7 @@ export function AcademicVerificationPrompt() {
     isVerifiedRef.current = isVerified;
   }, [isVerified]);
 
-  // 인증 상태가 변경되면 에러 다이얼로그 닫기
+  // 인증이 완료되면 에러 다이얼로그 닫기
   useEffect(() => {
     if (isVerified) {
       setShowErrorDialog(false);

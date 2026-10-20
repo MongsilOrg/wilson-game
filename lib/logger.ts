@@ -1,7 +1,7 @@
 /**
  * 환경별 로깅 유틸리티
  * 개발: console 사용
- * 프로덕션: 조건부 로깅 (에러만)
+ * 프로덕션: 조건부 로깅 (에러와 경고만)
  */
 
 const isDevelopment = process.env.NODE_ENV === 'development';

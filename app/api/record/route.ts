@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     const nickname = getDisplayName(member, discordUser);
     const avatarUrl = getMemberAvatarUrl(member, discordUser);
 
-    // KST 시간 기준으로 저장 (서버 시간대를 KST로 설정하거나 UTC+9 계산)
+    // KST 시간 기준으로 저장 (UTC 시각에 9시간을 더해 계산)
     const now = new Date();
     const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
 

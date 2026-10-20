@@ -140,7 +140,7 @@ export const authConfig: NextAuthConfig = {
     maxAge: 24 * 60 * 60,
   },
   secret: env.NEXTAUTH_SECRET,
-  // 개발 환경에서 localhost를 신뢰할 수 있는 호스트로 설정
+  // 환경 구분 없이 요청의 host 헤더를 신뢰하도록 설정
   trustHost: true,
    // NextAuth 로깅 설정 (개발 환경에서만 디버그 로그 표시)
   debug: process.env.NODE_ENV === 'development',

@@ -12,7 +12,7 @@ interface EnvConfig {
   DISCORD_BOT_TOKEN: string;
   DISCORD_GUILD_ID: string;
   NEXTAUTH_SECRET: string;
-  NEXTAUTH_URL?: string; // 프로덕션에서만 필수
+  NEXTAUTH_URL?: string; // 프로덕션이나 Vercel 환경에서만 필수
 }
 
 /**
@@ -34,7 +34,7 @@ export function validateEnv(): EnvConfig {
   if (!DISCORD_BOT_TOKEN) missing.push('DISCORD_BOT_TOKEN');
   if (!NEXTAUTH_SECRET) missing.push('NEXTAUTH_SECRET');
   
-  // 프로덕션 환경에서만 NEXTAUTH_URL 필수
+  // 프로덕션이나 Vercel 환경에서만 NEXTAUTH_URL 필수
   if ((isProduction || isVercel) && !NEXTAUTH_URL) {
     missing.push('NEXTAUTH_URL');
   }

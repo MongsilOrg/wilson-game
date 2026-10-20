@@ -153,7 +153,7 @@ export class InputHandler {
     const coord = this.screenToGrid(e.clientX, e.clientY);
     if (coord) {
       const [row, col] = coord;
-      // Canvas 범위를 벗어나도 유효한 그리드 좌표로 제한
+      // 그리드 좌표 범위로 제한 (Canvas 범위 밖이면 screenToGrid가 null을 돌려줘 갱신하지 않음)
       const clampedRow = Math.max(0, Math.min(GRID_HEIGHT - 1, row));
       const clampedCol = Math.max(0, Math.min(GRID_WIDTH - 1, col));
       this.endCell = [clampedRow, clampedCol];
