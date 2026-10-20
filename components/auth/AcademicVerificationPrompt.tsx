@@ -35,8 +35,8 @@ export function AcademicVerificationPrompt() {
     refreshCompletedRef.current = false;
     
     try {
-      // 세션 업데이트 (JWT 콜백에서 학적 인증 상태 재확인)
-      await update();
+      // 인자 없이 부르면 GET이라 jwt 콜백에 trigger: 'update'가 넘어가지 않음
+      await update({});
       
       // 세션이 반영될 때까지 폴링 (최대 5초)
       const maxWaitTime = 5000;
@@ -48,7 +48,7 @@ export function AcademicVerificationPrompt() {
       while (Date.now() - startTime < maxWaitTime) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
         
-        // 세션을 강제로 다시 가져오기 (주기적으로 호출)
+        // 인자 없는 GET이라 재확인 없이 갱신된 세션만 다시 읽음
         await updateSession();
         
         // isVerifiedRef를 통해 최신 값을 확인

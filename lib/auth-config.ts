@@ -97,7 +97,7 @@ export const authConfig: NextAuthConfig = {
         token.isMember = true;
         token.isVerified = true;
       } else if (token.discordId && trigger === 'update') {
-        // 사용자가 update()를 호출했을 때 멤버십과 학적 인증을 재확인
+        // 클라이언트가 update에 인자를 넘긴 POST 요청에서만 멤버십과 학적 인증을 재확인. session 인자는 토큰에 합치지 않음
         const discordId = token.discordId as string;
 
         try {

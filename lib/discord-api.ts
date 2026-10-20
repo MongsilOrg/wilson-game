@@ -143,6 +143,14 @@ export function getMemberAvatarUrl(member: DiscordGuildMember | null, user: Disc
 }
 
 /**
+ * 아바타 URL에서 해시 추출. 일반 아바타와 서버 아바타 형식만 인정하고 기본 아바타는 null
+ */
+export function parseAvatarHash(url: string): string | null {
+  const match = url.match(/\/(?:avatars\/[^/]+|guilds\/[^/]+\/users\/[^/]+\/avatars)\/([^/.]+)\./);
+  return match ? match[1] : null;
+}
+
+/**
  * 이미 조회한 멤버 객체로 학적 인증 여부 판정 (추가 API 호출 없음)
  */
 export function isAcademicVerifiedMember(member: DiscordGuildMember | null): boolean {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { mutateRecords, RecordStoreError } from '@/lib/api-utils';
 import { getSession } from '@/lib/auth';
 import { logger } from '@/lib/logger';
-import { getGuildMember, getDisplayName, getMemberAvatarUrl, isAcademicVerifiedMember } from '@/lib/discord-api';
+import { getGuildMember, getDisplayName, getMemberAvatarUrl, isAcademicVerifiedMember, parseAvatarHash } from '@/lib/discord-api';
 import { DiscordUser } from '@/types/auth';
 import { GRID_WIDTH, GRID_HEIGHT } from '@/types/game';
 
@@ -81,10 +81,7 @@ export async function POST(request: Request) {
       // 세션 image URL 형식: https://cdn.discordapp.com/avatars/{userId}/{avatar}.{ext}
       // 또는 https://cdn.discordapp.com/guilds/{guildId}/users/{userId}/avatars/{avatar}.{ext}
       if (user.image) {
-        const avatarMatch = user.image.match(/\/(?:avatars|guilds\/[^/]+\/users\/[^/]+\/avatars)\/[^/]+\/([^/.]+)\./);
-        if (avatarMatch) {
-          avatar = avatarMatch[1];
-        }
+        avatar = parseAvatarHash(user.image);
       }
 
       // 세션 name을 username으로 사용 (실제로는 global_name일 수도 있지만 구분 불가)
