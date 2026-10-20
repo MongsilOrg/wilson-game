@@ -95,7 +95,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <div className="text-sm text-muted-foreground">로딩 중...</div>
+          <div className="text-sm text-muted-foreground">불러오는 중</div>
         </div>
       ) : !isAuthenticated || !isVerified ? (
         <div className="flex items-center justify-center py-8">
@@ -187,7 +187,7 @@ export const GameIntro = memo(function GameIntro({ refreshTrigger = 0 }: GameInt
           {bestRecordError && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
-              최고 기록을 불러오는데 실패했습니다
+              최고 기록을 불러오는 데 실패했습니다
             </div>
           )}
         </div>

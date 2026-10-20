@@ -10,7 +10,7 @@ export async function GET() {
   } catch (error) {
     logger.error('랭킹 조회 오류:', error);
     return NextResponse.json(
-      { error: '랭킹을 불러오는데 실패했습니다.' },
+      { error: '랭킹을 불러오는 데 실패했습니다.' },
       { status: 500 }
     );
   }

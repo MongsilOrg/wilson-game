@@ -75,7 +75,7 @@ export function BoardIntro() {
               </a>
               {' '}학부생 전용 게임입니다.
               <br />
-              디스코드로 로그인해 주세요
+              디스코드로 로그인해주세요
             </p>
           </div>
         ) : !isVerified ? (

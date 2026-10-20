@@ -203,7 +203,7 @@ export const RankingList = memo(function RankingList({
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center gap-2">
           <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
           <span>
-            랭킹을 불러오는데 실패했습니다.
+            랭킹을 불러오는 데 실패했습니다.
             <br />
             잠시 후 다시 시도해주세요.
           </span>
@@ -257,7 +257,7 @@ export const RankingList = memo(function RankingList({
               variant="outline"
               size="sm"
               className="h-8 w-8 p-0"
-              title={refreshing ? '새로고침 중...' : '새로고침'}
+              title={refreshing ? '새로고침 중' : '새로고침'}
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
@@ -426,7 +426,7 @@ export const RankingList = memo(function RankingList({
                 disabled={updating || !editNickname.trim() || !editScore}
                 className="flex-1 min-h-[44px]"
               >
-                {updating ? '변경 중...' : '변경하기'}
+                {updating ? '변경 중' : '변경하기'}
               </Button>
             </div>
           </DialogContent>

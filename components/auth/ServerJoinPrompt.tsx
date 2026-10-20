@@ -71,7 +71,7 @@ export function ServerJoinPrompt({ serverInviteUrl }: ServerJoinPromptProps) {
             {isRefreshing ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                확인 중...
+                확인 중
               </>
             ) : (
               <>

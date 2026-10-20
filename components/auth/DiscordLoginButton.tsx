@@ -61,7 +61,7 @@ export function DiscordLoginButton() {
         {isLoading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            로그인 중...
+            로그인 중
           </>
         ) : (
           <>
