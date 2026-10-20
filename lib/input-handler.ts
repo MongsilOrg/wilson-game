@@ -92,7 +92,7 @@ export class InputHandler {
   /**
    * 화면 좌표를 그리드 좌표로 변환
    */
-  private screenToGrid(x: number, y: number): [number, number] | null {
+  private screenToGrid(x: number, y: number): [number, number] {
     const rect = this.canvas.getBoundingClientRect();
 
     // 실제 렌더 크기 대비 내부 캔버스 좌표로 변환 (CSS 스케일 보정)
@@ -105,10 +105,7 @@ export class InputHandler {
     const col = Math.floor(canvasX / this.cellSize);
     const row = Math.floor(canvasY / this.cellSize);
 
-    if (this.grid.isValidPosition(row, col)) {
-      return [row, col];
-    }
-    return null;
+    return [row, col];
   }
 
   /**
@@ -136,7 +133,7 @@ export class InputHandler {
    */
   private handleStart(e: MouseEvent | Touch): void {
     const coord = this.screenToGrid(e.clientX, e.clientY);
-    if (coord) {
+    if (this.grid.isValidPosition(...coord)) {
       this.isDragging = true;
       this.startCell = coord;
       this.endCell = coord;
@@ -150,15 +147,12 @@ export class InputHandler {
   private handleMove(e: MouseEvent | Touch): void {
     if (!this.isDragging) return;
 
-    const coord = this.screenToGrid(e.clientX, e.clientY);
-    if (coord) {
-      const [row, col] = coord;
-      // 그리드 좌표 범위로 제한 (Canvas 범위 밖이면 screenToGrid가 null을 돌려줘 갱신하지 않음)
-      const clampedRow = Math.max(0, Math.min(GRID_HEIGHT - 1, row));
-      const clampedCol = Math.max(0, Math.min(GRID_WIDTH - 1, col));
-      this.endCell = [clampedRow, clampedCol];
-      this.updateSelectedArea();
-    }
+    const [row, col] = this.screenToGrid(e.clientX, e.clientY);
+    // 터치는 Canvas 밖에서도 touchmove가 와서 가장자리 칸으로 제한
+    const clampedRow = Math.max(0, Math.min(GRID_HEIGHT - 1, row));
+    const clampedCol = Math.max(0, Math.min(GRID_WIDTH - 1, col));
+    this.endCell = [clampedRow, clampedCol];
+    this.updateSelectedArea();
   }
 
   /**
