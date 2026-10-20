@@ -27,7 +27,7 @@ export function readBoardPalette(): BoardPalette {
   return {
     surface: toColor(token('--card')),
     gridLine: toColor(token('--border'), isDark ? 0.55 : 0.8),
-    // 선택 영역은 두 테마 모두에서 판 위에 떠 보여야 해서 강조색을 그대로 쓴다.
+    // 선택 영역은 두 테마 모두에서 판과 구분되어 보여야 해서 강조색을 그대로 쓴다.
     selectionFill: toColor(token('--primary'), isDark ? 0.28 : 0.16),
     selectionStroke: toColor(token('--primary'), 0.95),
     selectionGlow: toColor(token('--primary'), 0.5),

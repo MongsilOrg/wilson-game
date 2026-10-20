@@ -18,7 +18,7 @@ const hasBlobToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 const isVercel = process.env.VERCEL === '1';
 
 // 기록에는 참가자 전원의 discordId가 들어 있다. private으로 둬야 하고,
-// useCache: false로 원본을 직접 읽는 것도 private일 때만 동작한다(공개 객체는 CDN 캐시를 탄다).
+// useCache: false로 원본을 직접 읽는 것도 private일 때만 동작한다(공개 객체는 CDN에 캐시된다).
 const BLOB_ACCESS = 'private' as const;
 
 // public과 private은 호스트가 달라 기존 객체가 자동으로 옮겨지지 않는다.
@@ -39,8 +39,8 @@ export class RecordStoreError extends Error {
 }
 
 /**
- * 본문이 압축 임계치(약 1KB)를 넘으면 get 응답의 ETag가 약한 형태(W/"…")로 내려온다.
- * put의 ifMatch는 강 비교라 그대로 쓰면 항상 412가 나므로 접두사를 벗겨야 한다.
+ * 본문이 압축 임계치(약 1KB)를 넘으면 get 응답의 ETag가 약한 형태(W/"<값>")로 반환된다.
+ * put의 ifMatch는 강 비교라 그대로 쓰면 항상 412를 받으므로 접두사를 제거해야 한다.
  */
 export function normalizeEtag(etag: string): string {
   return etag.startsWith('W/') ? etag.slice(2) : etag;
@@ -207,7 +207,7 @@ export async function getRecords(): Promise<GameRecord[]> {
  * 읽기가 실패하면 저장하지 않는다. 빈 배열로 덮어써 전체 기록이 사라지는 것을 막는다.
  * 저장 직전에 다른 요청이 먼저 썼으면 새로 읽어 다시 적용한다.
  * 변형 함수가 받은 배열을 그대로 돌려주면 저장을 생략한다. put 횟수가 플랜 한도에
- * 잡히므로, 변경이 없으면(점수 미갱신 등) 쓰지 않는 것이 요금과 충돌 양쪽에 낫다.
+ * 집계되므로, 변경이 없으면(점수 미갱신 등) 쓰지 않는 것이 요금과 충돌 양쪽에 낫다.
  */
 export async function mutateRecords<T>(
   mutator: (records: GameRecord[]) => { records: GameRecord[]; result: T }

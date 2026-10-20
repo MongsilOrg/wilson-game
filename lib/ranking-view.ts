@@ -4,17 +4,17 @@ import { getGuildMember, getDisplayName, getMemberAvatarUrl } from '@/lib/discor
 import { logger } from '@/lib/logger';
 
 const MEMBER_TTL_MS = 5 * 60 * 1000;
-// 실패도 잠시 캐시한다. 실패를 캐시하지 않으면 429가 나는 동안 요청마다
-// 표시 인원 전원을 재조회해 429가 429를 부르는 폭주가 이어진다.
+// 실패도 잠시 캐시한다. 실패를 캐시하지 않으면 429를 받는 동안 요청마다
+// 표시 인원 전원을 재조회하고, 그 재조회가 다시 429를 받는 상태가 이어진다.
 const FAILURE_TTL_MS = 60 * 1000;
-// 길드 멤버 조회는 버킷이 좁아(초당 5회 수준) 10명을 동시에 쏘면 절반이 429로 죽는다.
+// 길드 멤버 조회는 버킷이 좁아(초당 5회 수준) 10명을 동시에 요청하면 절반이 429를 받는다.
 const FETCH_CONCURRENCY = 3;
 
 type CachedMember = { value: DiscordGuildMember | null; expiresAt: number };
 
 // 랭킹 조회는 인증이 없어 누구나 반복 호출할 수 있다. 캐시가 없으면 요청마다
-// 표시 인원 수만큼 Discord 호출이 나가 봇 토큰의 레이트리밋을 태우고,
-// 그러면 같은 토큰을 쓰는 로그인까지 막힌다.
+// 표시 인원 수만큼 Discord를 호출해 봇 토큰의 레이트리밋을 소진하고,
+// 그러면 같은 토큰을 쓰는 로그인 요청까지 429를 받는다.
 const memberCache = new Map<string, CachedMember>();
 
 async function getCachedMember(discordId: string): Promise<DiscordGuildMember | null> {
@@ -29,7 +29,7 @@ async function getCachedMember(discordId: string): Promise<DiscordGuildMember | 
     return value;
   } catch (error) {
     logger.error(`멤버 정보 조회 실패 (discordId: ${discordId}):`, error);
-    // 만료된 값이라도 다시 걸어 둔다. 표시 정보라 잠깐 낡아도 무방하다.
+    // 만료된 값이라도 다시 캐시에 넣는다. 표시 정보라 잠깐 낡아도 무방하다.
     memberCache.set(discordId, {
       value: cached?.value ?? null,
       expiresAt: Date.now() + FAILURE_TTL_MS,
@@ -58,7 +58,7 @@ async function fetchMembers(discordIds: string[]): Promise<Map<string, DiscordGu
 }
 
 /**
- * 표시할 기록에만 최신 닉네임과 아바타를 입힌다.
+ * 표시할 기록에만 최신 닉네임과 아바타를 채운다.
  */
 export async function getRankingView(records: GameRecord[]): Promise<GameRecord[]> {
   const discordIds = [

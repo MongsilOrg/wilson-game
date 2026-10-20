@@ -18,7 +18,7 @@ try {
   throw error; // 유효한 값 없이는 NextAuth를 구성할 수 없으므로 환경 구분 없이 중단
 }
 
-/** 로그인 차단 사유를 요청 본인에게만 전달하도록 리다이렉트 URL로 실어 보낸다. */
+/** 로그인 차단 사유를 요청 본인에게만 전달하도록 리다이렉트 URL의 쿼리로 전달한다. */
 function accessDeniedUrl(errorType: 'NOT_MEMBER' | 'NOT_VERIFIED' | 'TEMPORARY_ERROR'): string {
   return `/?error=AccessDenied&errorType=${errorType}`;
 }
@@ -44,7 +44,7 @@ export const authConfig: NextAuthConfig = {
       try {
         member = await getGuildMember(discordId);
       } catch (error) {
-        // Discord가 일시적으로 응답하지 못한 것을 미가입으로 단정x
+        // Discord가 일시적으로 응답하지 못한 것을 미가입으로 단정하지 않음
         logger.error('로그인 중 서버 멤버십 확인 실패:', error);
         return accessDeniedUrl('TEMPORARY_ERROR');
       }

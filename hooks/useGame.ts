@@ -13,8 +13,8 @@ import { apiClient } from '@/lib/api-client';
 
 export function useGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // 캔버스는 뷰포트 변화로 언마운트됐다 다시 붙는다. 그때 렌더러와 입력 핸들러를
-  // 새 엘리먼트에 다시 묶지 않으면 화면이 비고 드래그가 먹지 않는다.
+  // 캔버스는 뷰포트 변화로 언마운트됐다 다시 마운트된다. 그때 렌더러와 입력 핸들러를
+  // 새 엘리먼트에 다시 묶지 않으면 아무것도 그려지지 않고 드래그 입력이 처리되지 않는다.
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
     canvasRef.current = node;
@@ -407,7 +407,7 @@ export function useGame() {
     return () => observer.disconnect();
   }, [setupCanvas, draw]);
 
-  // 캔버스가 다시 붙으면 크기부터 다시 잡는다.
+  // 캔버스가 다시 마운트되면 크기부터 다시 설정한다.
   useEffect(() => {
     if (!canvasEl) return;
     setupCanvas();

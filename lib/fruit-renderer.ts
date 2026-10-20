@@ -82,7 +82,7 @@ export class FruitRenderer {
     }
 
     // 윌슨 이미지는 흰 사각형 배경을 포함한다. 원형으로 잘라내지 않으면
-    // 다크 테마에서 판 전체가 흰 타일로 덮인다.
+    // 다크 테마에서 판 전체에 흰 사각형 타일이 표시된다.
     this.ctx.beginPath();
     this.ctx.arc(x, y, renderHalfSize, 0, Math.PI * 2);
     this.ctx.clip();

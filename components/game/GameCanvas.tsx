@@ -12,7 +12,7 @@ export const GameCanvas = memo(function GameCanvas() {
     <div className="w-full flex justify-center">
       <div className="w-full max-w-[960px]">
         <div className="relative w-full aspect-[17/10]">
-          {/* 대기 중에도 캔버스를 붙여둬야 시작 시점에 바로 초기화된다. */}
+          {/* 대기 중에도 캔버스를 렌더해 둬야 시작 시점에 바로 초기화된다. */}
           <canvas
             ref={canvasRef}
             aria-label="게임 보드"

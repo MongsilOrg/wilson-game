@@ -6,7 +6,7 @@ const DISCORD_API_BASE = 'https://discord.com/api/v10';
 const GUILD_ID = getEnv('DISCORD_GUILD_ID') || '1129730102633189376';
 const BOT_TOKEN = getEnv('DISCORD_BOT_TOKEN');
 
-// 학적 인증으로 인정하는 역할. 서버에서 역할을 새로 파면 env로 덮어쓴다.
+// 학적 인증으로 인정하는 역할. 서버에서 역할을 새로 만들면 env 값으로 바꾼다.
 const VERIFIED_ROLE_IDS = (
   process.env.DISCORD_VERIFIED_ROLE_IDS ||
   '1406632649686253649,1406620470307979344,1129731819198222417'
@@ -21,7 +21,7 @@ if (!BOT_TOKEN) {
 
 /**
  * Discord API가 일시적으로 응답하지 못한 상태. 404(미가입)와 구분해야
- * 정상 멤버에게 "서버에 가입하세요" 안내가 잘못 뜨는 것을 막을 수 있다.
+ * 정상 멤버에게 "서버에 가입하세요" 안내가 잘못 표시되는 것을 막을 수 있다.
  */
 export class DiscordUnavailableError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {

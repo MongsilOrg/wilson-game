@@ -12,7 +12,7 @@ async function getTopRankings() {
     const records = await getRecords();
     return await getRankingView(dedupeAndSort(records, 10));
   } catch (error) {
-    // 랭킹을 못 읽어도 게임은 되어야 하므로 빈 목록으로 렌더한다.
+    // 랭킹을 못 읽어도 게임은 동작해야 하므로 빈 목록으로 렌더한다.
     logger.error('초기 랭킹 조회 실패:', error);
     return [];
   }

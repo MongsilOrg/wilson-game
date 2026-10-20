@@ -38,7 +38,7 @@ export const GameHeader = memo(function GameHeader() {
           </div>
           <div
             role="timer"
-            // 초마다 읽으면 시끄러우므로 경고 구간에서만 알린다.
+            // 스크린 리더가 매초 읽으면 방해가 되므로 경고 구간에서만 알린다.
             aria-live={isCritical ? 'assertive' : 'off'}
             aria-label={`남은 시간 ${formattedTime}`}
             className={`text-3xl sm:text-4xl font-bold tabular-nums transition-colors duration-300 ${
