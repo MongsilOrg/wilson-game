@@ -272,7 +272,7 @@ export const RankingList = memo(function RankingList({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-border/60 hover:bg-transparent">
-                <TableHead className="w-14 text-center text-xs font-semibold text-muted-foreground">순위</TableHead>
+                <TableHead className="w-14 text-center whitespace-nowrap text-xs font-semibold text-muted-foreground">순위</TableHead>
                 <TableHead className="text-xs font-semibold text-muted-foreground">플레이어</TableHead>
                 <TableHead className="text-right whitespace-nowrap text-xs font-semibold text-muted-foreground">점수</TableHead>
                 <TableHead className="text-right hidden sm:table-cell text-xs font-semibold text-muted-foreground">시간</TableHead>
@@ -317,7 +317,7 @@ export const RankingList = memo(function RankingList({
                         )}
                       </span>
                     </TableCell>
-                    <TableCell className="font-medium w-full max-w-0 text-foreground">
+                    <TableCell className="font-medium w-full max-w-0 sm:w-auto sm:max-w-none text-foreground">
                       <div className="flex items-center gap-2 min-w-0">
                         {record.avatarUrl ? (
                           <img

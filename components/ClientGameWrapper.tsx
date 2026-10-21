@@ -42,7 +42,7 @@ export function ClientGameWrapper({ initialRankings }: ClientGameWrapperProps) {
         <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4">
           <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">플레이는 가로 화면이나 PC에서 할 수 있습니다</p>
+            <p className="text-sm font-semibold text-foreground">세로 화면에서는 플레이할 수 없습니다</p>
             <p className="text-sm text-muted-foreground">
               드래그로 조작하는 게임이라 가로 화면이나 PC 브라우저가 필요합니다.
               <br />
