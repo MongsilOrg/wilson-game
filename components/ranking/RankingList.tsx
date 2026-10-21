@@ -222,8 +222,8 @@ export const RankingList = memo(function RankingList({
           </span>
         </div>
         <div className="rounded-xl border border-dashed border-border/60 bg-card px-6 py-10 text-center space-y-2">
-          <img src="/wilson/number_1.png" alt="" aria-hidden="true" className="mx-auto mb-2 h-12 w-12" />
-          <p className="text-base font-medium text-foreground">아직 기록이 없습니다</p>
+          <img src="/wilson/number_1.png" alt="" aria-hidden="true" className="mx-auto mb-2 h-12 w-12 rounded-full" />
+          <p className="text-base font-medium text-foreground">아직 기록이 없습니다.</p>
           <p className="text-sm text-muted-foreground">첫 기록을 남겨보세요.</p>
         </div>
       </div>
@@ -274,7 +274,7 @@ export const RankingList = memo(function RankingList({
               <TableRow className="border-b border-border/60 hover:bg-transparent">
                 <TableHead className="w-14 text-center text-xs font-semibold text-muted-foreground">순위</TableHead>
                 <TableHead className="text-xs font-semibold text-muted-foreground">플레이어</TableHead>
-                <TableHead className="text-right text-xs font-semibold text-muted-foreground">점수</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-xs font-semibold text-muted-foreground">점수</TableHead>
                 <TableHead className="text-right hidden sm:table-cell text-xs font-semibold text-muted-foreground">시간</TableHead>
               </TableRow>
             </TableHeader>
@@ -317,7 +317,7 @@ export const RankingList = memo(function RankingList({
                         )}
                       </span>
                     </TableCell>
-                    <TableCell className="font-medium max-w-[140px] sm:max-w-none text-foreground">
+                    <TableCell className="font-medium w-full max-w-0 text-foreground">
                       <div className="flex items-center gap-2 min-w-0">
                         {record.avatarUrl ? (
                           <img

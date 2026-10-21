@@ -19,7 +19,7 @@ const config = {
     },
     extend: {
       fontFamily: {
-        sans: ['GMarketSans', 'sans-serif'],
+        sans: ['Pretendard Variable', 'Pretendard', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

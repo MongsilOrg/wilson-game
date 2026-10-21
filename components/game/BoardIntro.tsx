@@ -37,7 +37,7 @@ export function BoardIntro() {
               key={n}
               src={`/wilson/number_${n}.png`}
               alt=""
-              className="h-14 w-14 sm:h-16 sm:w-16"
+              className="h-14 w-14 rounded-full sm:h-16 sm:w-16"
             />
           ))}
         </div>
@@ -75,7 +75,7 @@ export function BoardIntro() {
               </a>
               {' '}학부생 전용 게임입니다.
               <br />
-              디스코드로 로그인해주세요
+              Discord로 로그인해주세요.
             </p>
           </div>
         ) : !isVerified ? (

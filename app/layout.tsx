@@ -8,6 +8,7 @@ import { SessionProvider } from "@/components/SessionProvider";
 export const metadata: Metadata = {
   title: "윌슨게임",
   description: "윌슨! 도와줘",
+  openGraph: { title: "윌슨게임", description: "윌슨! 도와줘", siteName: "윌슨게임", locale: "ko_KR", type: "website" },
 };
 
 export default function RootLayout({
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="bg-background" suppressHydrationWarning>
       <head>
+        <link rel="stylesheet" href="/fonts/pretendard/pretendardvariable-dynamic-subset.css" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
